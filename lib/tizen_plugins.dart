@@ -3,7 +3,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'dart:cli';
+// import 'dart:cli';
 
 import 'package:file/file.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
@@ -89,8 +89,9 @@ mixin TizenExtension on FlutterCommand {
   @override
   String get targetFile {
     // Caution: Converting async to sync.
-    return entrypoint ??= waitFor<String>(
-        _createEntrypoint(FlutterProject.current(), super.targetFile));
+    // return entrypoint ??= waitFor<String>(
+    //     _createEntrypoint(FlutterProject.current(), super.targetFile));
+    return super.targetFile;
   }
 
   @override
