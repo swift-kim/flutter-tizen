@@ -134,7 +134,7 @@ void testUsingContext(
           TemplateRenderer: () => const MustacheTemplateRenderer(),
         },
         body: () {
-          final String flutterRoot = getFlutterRoot();
+          // final String flutterRoot = getFlutterRoot();
           return runZoned<Future<dynamic>>(() {
             try {
               return context.run<dynamic>(
@@ -143,11 +143,11 @@ void testUsingContext(
                 overrides: overrides,
                 name: 'test-specific overrides',
                 body: () async {
-                  if (initializeFlutterRoot) {
-                    // Provide a sane default for the flutterRoot directory. Individual
-                    // tests can override this either in the test or during setup.
-                    Cache.flutterRoot ??= flutterRoot;
-                  }
+                  // if (initializeFlutterRoot) {
+                  //   // Provide a sane default for the flutterRoot directory. Individual
+                  //   // tests can override this either in the test or during setup.
+                  //   Cache.flutterRoot ??= flutterRoot;
+                  // }
                   return await testMethod();
                 },
               );
