@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_tools/src/android/android_studio_validator.dart';
 import 'package:flutter_tools/src/android/android_workflow.dart';
 import 'package:flutter_tools/src/base/context.dart';
 import 'package:flutter_tools/src/doctor.dart';
@@ -16,19 +15,15 @@ TizenValidator get tizenValidator => context.get<TizenValidator>();
 /// See: [_DefaultDoctorValidatorsProvider] in `doctor.dart`
 class TizenDoctorValidatorsProvider extends DoctorValidatorsProvider {
   @override
-  List<DoctorValidator> get validators {
-    final List<DoctorValidator> validators =
-        DoctorValidatorsProvider.defaultInstance.validators;
-    for (final DoctorValidator validator in validators) {
-      // Append before any IDE validators.
-      if (validator is AndroidStudioValidator ||
-          validator is NoAndroidStudioValidator) {
-        validators.insert(validators.indexOf(validator), tizenValidator);
-        break;
-      }
-    }
-    return validators;
-  }
+  List<DoctorValidator> get validators => <DoctorValidator>[
+        FlutterValidator(),
+        if (tizenWorkflow.appliesToHostPlatform) tizenValidator,
+        if (globals.deviceManager.canListAnything)
+          DeviceValidator(
+            deviceManager: globals.deviceManager,
+            userMessages: globals.userMessages,
+          ),
+      ];
 
   @override
   List<Workflow> get workflows => <Workflow>[

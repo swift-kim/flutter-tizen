@@ -23,3 +23,5 @@ jobs:
         run: flutter/bin/dart format --output=none --set-exit-if-changed lib
       - name: Analyze project source
         run: flutter/bin/dart analyze --fatal-infos lib
+      - name: Run tests
+        run: flutter/bin/flutter test test
