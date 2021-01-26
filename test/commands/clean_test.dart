@@ -12,40 +12,38 @@ import 'package:test/test.dart';
 import '../../flutter/packages/flutter_tools/test/src/context.dart';
 
 void main() {
-  group('clean command', () {
-    MemoryFileSystem fileSystem;
-    TizenProject tizenProject;
+  MemoryFileSystem fileSystem;
+  TizenProject tizenProject;
 
-    setUp(() {
-      fileSystem = MemoryFileSystem();
+  setUp(() {
+    fileSystem = MemoryFileSystem.test();
 
-      final Directory currentDirectory = fileSystem.currentDirectory;
-      tizenProject = TizenProject.fromFlutter(
-          FlutterProject.fromDirectory(currentDirectory));
-      tizenProject.ephemeralDirectory.createSync(recursive: true);
-      tizenProject.editableDirectory
-          .childFile('Runner.csproj')
-          .createSync(recursive: true);
-      tizenProject.editableDirectory
-          .childDirectory('bin')
-          .createSync(recursive: true);
-    });
-
-    testUsingContext(
-      '$TizenCleanCommand removes ephemeral directories',
-      () async {
-        await TizenCleanCommand().runCommand();
-
-        expect(tizenProject.ephemeralDirectory.existsSync(), isFalse);
-        expect(
-          tizenProject.editableDirectory.childDirectory('bin').existsSync(),
-          isFalse,
-        );
-      },
-      overrides: <Type, Generator>{
-        FileSystem: () => fileSystem,
-        ProcessManager: () => FakeProcessManager.any(),
-      },
-    );
+    final Directory currentDirectory = fileSystem.currentDirectory;
+    tizenProject = TizenProject.fromFlutter(
+        FlutterProject.fromDirectory(currentDirectory));
+    tizenProject.ephemeralDirectory.createSync(recursive: true);
+    tizenProject.editableDirectory
+        .childFile('Runner.csproj')
+        .createSync(recursive: true);
+    tizenProject.editableDirectory
+        .childDirectory('bin')
+        .createSync(recursive: true);
   });
+
+  testUsingContext(
+    '$TizenCleanCommand removes ephemeral directories',
+    () async {
+      await TizenCleanCommand().runCommand();
+
+      expect(tizenProject.ephemeralDirectory.existsSync(), isFalse);
+      expect(
+        tizenProject.editableDirectory.childDirectory('bin').existsSync(),
+        isFalse,
+      );
+    },
+    overrides: <Type, Generator>{
+      FileSystem: () => fileSystem,
+      ProcessManager: () => FakeProcessManager.any(),
+    },
+  );
 }

@@ -2,17 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import 'package:flutter_tools/executable.dart';
+import 'package:file/file.dart';
 import 'package:flutter_tools/src/commands/analyze.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 
 import '../tizen_plugins.dart';
 
 class TizenAnalyzeCommand extends AnalyzeCommand with TizenExtension {
-  /// Source: [main] in `executable.dart`
-  TizenAnalyzeCommand({bool verboseHelp = false})
-      : super(
+  TizenAnalyzeCommand({
+    bool verboseHelp = false,
+    Directory workingDirectory,
+  }) : super(
           verboseHelp: verboseHelp,
+          workingDirectory: workingDirectory,
           fileSystem: globals.fs,
           platform: globals.platform,
           processManager: globals.processManager,

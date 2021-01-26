@@ -32,8 +32,10 @@ void main() {
   test(
     '$TizenValidator validation fails if Tizen SDK is not installed',
     () => testbed.run(() async {
-      expect(await tizenValidator.validate(),
-          (ValidationResult r) => r.type == ValidationType.missing);
+      expect(
+        await tizenValidator.validate(),
+        (ValidationResult r) => r.type == ValidationType.missing,
+      );
     }),
   );
 }
