@@ -26,18 +26,25 @@ import 'tizen_sdk.dart';
 import 'tizen_tpk.dart';
 
 /// Prepares the pre-built flutter bundle.
-abstract class TizenAssetBundle extends AndroidAssetBundle {
-  TizenAssetBundle(this.project, this.buildInfo);
+abstract class TizenApplication extends AndroidAssetBundle {
+  TizenApplication(this.project, this.buildInfo);
 
   final FlutterProject project;
   final TizenBuildInfo buildInfo;
 
   @override
-  String get name => 'tizen_asset_bundle';
+  String get name => 'tizen_application';
+
+  @override
+  List<Target> get dependencies => <Target>[
+        ...super.dependencies,
+        if (TizenProject.fromFlutter(project).isDotnet)
+          TizenPlugins(project, buildInfo),
+      ];
 }
 
 /// Source: [DebugAndroidApplication] in `android.dart`
-class DebugTizenApplication extends TizenAssetBundle {
+class DebugTizenApplication extends TizenApplication {
   DebugTizenApplication(FlutterProject project, TizenBuildInfo buildInfo)
       : super(project, buildInfo);
 
@@ -60,17 +67,10 @@ class DebugTizenApplication extends TizenAssetBundle {
             '{OUTPUT_DIR}/flutter_assets/isolate_snapshot_data'),
         const Source.pattern('{OUTPUT_DIR}/flutter_assets/kernel_blob.bin'),
       ];
-
-  @override
-  List<Target> get dependencies => <Target>[
-        ...super.dependencies,
-        if (TizenProject.fromFlutter(project).isDotnet)
-          TizenPlugins(project, buildInfo),
-      ];
 }
 
 /// See: [ReleaseAndroidApplication] in `android.dart`
-class ReleaseTizenApplication extends TizenAssetBundle {
+class ReleaseTizenApplication extends TizenApplication {
   ReleaseTizenApplication(FlutterProject project, TizenBuildInfo buildInfo)
       : super(project, buildInfo);
 
@@ -81,8 +81,6 @@ class ReleaseTizenApplication extends TizenAssetBundle {
   List<Target> get dependencies => <Target>[
         ...super.dependencies,
         TizenAotElf(buildInfo.targetArchs),
-        if (TizenProject.fromFlutter(project).isDotnet)
-          TizenPlugins(project, buildInfo),
       ];
 }
 
