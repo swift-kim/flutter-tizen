@@ -13,7 +13,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Tizen.Flutter.Embedding" Version="$(FlutterEmbeddingVersion)" />
+    <Compile Remove="flutter\embedding\**" />
+    <ProjectReference Include="flutter\embedding\Tizen.Flutter.Embedding.csproj" />
   </ItemGroup>
 
   <ItemGroup>

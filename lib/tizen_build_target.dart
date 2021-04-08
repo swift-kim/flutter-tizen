@@ -445,8 +445,9 @@ class DotnetTpk {
       }
     }
 
-    // For now a constant value is used instead of reading from a file.
-    // Keep this value in sync with the latest published nuget version.
+    // TODO(swift-kim): This property is only used by projects created before
+    // April 2021. Keep the value up to date until majority of projects are
+    // migrated to use ProjectReference.
     const String embeddingVersion = '1.3.1';
 
     // Run .NET build.
