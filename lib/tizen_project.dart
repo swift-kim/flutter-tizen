@@ -5,9 +5,15 @@
 
 import 'dart:io';
 
+import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
+import 'package:flutter_tools/src/base/os.dart';
+import 'package:flutter_tools/src/base/platform.dart';
+import 'package:flutter_tools/src/base/version.dart';
+import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
+import 'package:meta/meta.dart';
 
 import 'tizen_plugins.dart';
 import 'tizen_tpk.dart';
@@ -53,7 +59,54 @@ class TizenProject extends FlutterProjectPlatform {
     return '${manifest.packageId}-${manifest.version}.tpk';
   }
 
-  Future<void> ensureReadyForPlatformSpecificTooling() async {}
+  Future<void> ensureReadyForPlatformSpecificTooling() async {
+    if (isDotnet) {
+      // Create a symlink to the embedidng (Tizen.Flutter.Embedding) directory
+      // for reference by the app project. See Runner.csproj for details.
+      final Link embeddingLink = managedDirectory.childLink('embedding');
+      if (!embeddingLink.existsSync()) {
+        final Directory embeddingDir = globals.fs
+            .directory(Cache.flutterRoot)
+            .parent
+            .childDirectory('embedding')
+            .childDirectory('csharp');
+        try {
+          embeddingLink.createSync(embeddingDir.path, recursive: true);
+        } on FileSystemException catch (e) {
+          handleSymlinkException(e, platform: globals.platform, os: globals.os);
+        }
+      }
+    }
+  }
+}
+
+/// Handler for symlink failures which provides specific instructions for known
+/// failure cases.
+///
+/// Source: [handleSymlinkException] in `plugins.dart` (exact copy)
+void handleSymlinkException(
+  FileSystemException e, {
+  @required Platform platform,
+  @required OperatingSystemUtils os,
+}) {
+  if (platform.isWindows && (e.osError?.errorCode ?? 0) == 1314) {
+    final String versionString =
+        RegExp(r'[\d.]+').firstMatch(os.name)?.group(0);
+    final Version version = Version.parse(versionString);
+    // Windows 10 14972 is the oldest version that allows creating symlinks
+    // just by enabling developer mode; before that it requires running the
+    // terminal as Administrator.
+    // https://blogs.windows.com/windowsdeveloper/2016/12/02/symlinks-windows-10/
+    final String instructions =
+        (version != null && version >= Version(10, 0, 14972))
+            ? 'Please enable Developer Mode in your system settings. Run\n'
+                '  start ms-settings:developers\n'
+                'to open settings.'
+            : 'You must build from a terminal run as administrator.';
+    throwToolExit(
+      'Building a Tizen project requires symlink support.\n\n' + instructions,
+    );
+  }
 }
 
 /// Used for parsing native plugin's `project_def.prop`.

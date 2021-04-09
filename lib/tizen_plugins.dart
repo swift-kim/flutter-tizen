@@ -92,7 +92,7 @@ mixin TizenExtension on FlutterCommand {
   Future<FlutterCommandResult> verifyThenRunCommand(String commandPath) async {
     if (super.shouldRunPub) {
       // TODO(swift-kim): Should run pub get first before injecting plugins.
-      await injectTizenPlugins(FlutterProject.current());
+      await ensureReadyForTizenTooling(FlutterProject.current());
     }
     if (_usesTargetOption) {
       _entrypoint =
@@ -169,9 +169,17 @@ const List<String> _knownPlugins = <String>[
   'url_launcher',
 ];
 
-/// This method must be called whenever [injectPlugins] is called.
-/// [injectPlugins] is commonly called by [FlutterProject.regeneratePlatformSpecificTooling].
+/// This must be called whenever [FlutterProject.regeneratePlatformSpecificTooling]
+/// or [FlutterProject.ensureReadyForPlatformSpecificTooling] is called.
 ///
+/// See: [FlutterProject.ensureReadyForPlatformSpecificTooling] in `project.dart`
+Future<void> ensureReadyForTizenTooling(FlutterProject project) async {
+  final TizenProject tizenProject = TizenProject.fromFlutter(project);
+  await tizenProject.ensureReadyForPlatformSpecificTooling();
+
+  await injectTizenPlugins(project);
+}
+
 /// See: [injectPlugins] in `plugins.dart`
 Future<void> injectTizenPlugins(FlutterProject project) async {
   if (!project.directory.existsSync() || project.hasExampleApp) {
