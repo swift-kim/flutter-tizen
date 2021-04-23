@@ -194,6 +194,12 @@ class TizenPlugins extends Target {
     final String profile =
         TizenManifest.parseFromXml(tizenProject.manifestFile)?.profile;
 
+    final List<TizenPlugin> nativePlugins =
+        await findTizenPlugins(project, nativeOnly: true);
+    if (nativePlugins.isEmpty) {
+      return;
+    }
+
     // Clear the output directory.
     final Directory ephemeralDir = tizenProject.ephemeralDirectory;
     if (ephemeralDir.existsSync()) {
@@ -201,103 +207,106 @@ class TizenPlugins extends Target {
     }
     ephemeralDir.createSync(recursive: true);
 
-    final List<TizenPlugin> nativePlugins =
-        await findTizenPlugins(project, nativeOnly: true);
+    for (final String arch in buildInfo.targetArchs) {
+      final Directory engineDir =
+          tizenArtifacts.getEngineDirectory(arch, buildMode);
 
-    for (final TizenPlugin plugin in nativePlugins) {
-      final Directory pluginDir = environment.fileSystem.directory(plugin.path);
+      final List<String> userIncludes = <String>[];
+      final List<String> userSources = <String>[];
+
+      for (final TizenPlugin plugin in nativePlugins) {
+        if (plugin == nativePlugins.first) {
+          continue;
+        }
+        final TizenLibrary library = TizenLibrary(plugin.path);
+        userIncludes
+            .addAll(library.getPropertyAsAbsolutePaths('USER_INC_DIRS'));
+        userSources.addAll(library.getPropertyAsAbsolutePaths('USER_SRCS'));
+      }
+
+      final Directory commonDir = engineDir.parent.childDirectory('common');
+      final Directory clientWrapperDir =
+          commonDir.childDirectory('cpp_client_wrapper');
+      userSources.add(clientWrapperDir.childFile('*.cc').path);
+
+      if (!engineDir.existsSync() || !clientWrapperDir.existsSync()) {
+        throwToolExit(
+            'The flutter engine artifacts were corrupted or invalid.');
+      }
+      final Map<String, String> variables = <String, String>{
+        'PATH': getDefaultPathVariable(),
+        'USER_SRCS': userSources.map(getUnixPath).join(' '),
+      };
+      final List<String> extraOptions = <String>[
+        '-lflutter_tizen_${buildInfo.deviceProfile}',
+        '-L${getUnixPath(engineDir.path)}',
+        '-std=c++17',
+        '-I${getUnixPath(clientWrapperDir.childDirectory('include').path)}',
+        '-I${getUnixPath(commonDir.childDirectory('public').path)}',
+        ...userIncludes.map(getUnixPath).map((String p) => '-I' + p),
+        '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
+        // '-Wl,-unresolved-symbols=ignore-in-shared-libs',
+      ];
+
+      assert(nativePlugins.isNotEmpty);
+      final TizenPlugin plugin = nativePlugins.first;
+      final Directory pluginDir =
+          environment.fileSystem.directory(nativePlugins.first.path);
       final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
       final Directory buildDir = pluginDir.childDirectory(buildConfig);
 
-      for (final String arch in buildInfo.targetArchs) {
-        final Directory engineDir =
-            tizenArtifacts.getEngineDirectory(arch, buildMode);
-        final Directory commonDir = engineDir.parent.childDirectory('common');
-        final Directory clientWrapperDir =
-            commonDir.childDirectory('cpp_client_wrapper');
+      assert(tizenSdk != null);
+      final Rootstrap rootstrap =
+          tizenSdk.getFlutterRootstrap(profile: profile, arch: arch);
+      final String tizenArch = arch == 'arm64' ? 'aarch64' : arch;
 
-        if (!engineDir.existsSync() || !clientWrapperDir.existsSync()) {
-          throwToolExit(
-            'The flutter engine artifacts were corrupted or invalid.\n'
-            'Unable to build ${plugin.name} plugin.',
-          );
-        }
-        final Map<String, String> variables = <String, String>{
-          'PATH': getDefaultPathVariable(),
-          'USER_SRCS': getUnixPath(clientWrapperDir.childFile('*.cc').path)
-        };
-        final List<String> extraOptions = <String>[
-          '-lflutter_tizen_${buildInfo.deviceProfile}',
-          '-L${getUnixPath(engineDir.path)}',
-          '-std=c++17',
-          '-I${getUnixPath(clientWrapperDir.childDirectory('include').path)}',
-          '-I${getUnixPath(commonDir.childDirectory('public').path)}',
-          '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
-        ];
-
-        assert(tizenSdk != null);
-        final Rootstrap rootstrap =
-            tizenSdk.getFlutterRootstrap(profile: profile, arch: arch);
-        final String tizenArch = arch == 'arm64' ? 'aarch64' : arch;
-
-        if (buildDir.existsSync()) {
-          buildDir.deleteSync(recursive: true);
-        }
-        final RunResult result = await _processUtils.run(<String>[
-          tizenSdk.tizenCli.path,
-          'build-native',
-          '-a',
-          tizenArch,
-          '-C',
-          buildConfig,
-          '-c',
-          tizenSdk.defaultNativeCompiler,
-          '-r',
-          rootstrap.id,
-          '-e',
-          extraOptions.join(' '),
-          '--',
-          pluginDir.path,
-        ], environment: variables);
-        if (result.exitCode != 0) {
-          throwToolExit('Failed to build ${plugin.name} plugin:\n$result');
-        }
-
-        final File sharedLib =
-            buildDir.childFile('lib' + (plugin.toMap()['sofile'] as String));
-        if (!sharedLib.existsSync()) {
-          throwToolExit(
-            'Built ${plugin.name} but the file ${sharedLib.path} is not found:\n'
-            '${result.stdout}',
-          );
-        }
-        final Directory outputDir = ephemeralDir
-            .childDirectory('lib')
-            .childDirectory(tizenArch)
-              ..createSync(recursive: true);
-        sharedLib.copySync(outputDir.childFile(sharedLib.basename).path);
-
-        // Copy binaries that the plugin depends on.
-        final String pluginArch =
-            arch == 'arm' ? 'armel' : (arch == 'x86' ? 'i586' : arch);
-        final Directory pluginLibDir =
-            pluginDir.childDirectory('lib').childDirectory(pluginArch);
-
-        if (pluginLibDir.existsSync()) {
-          globals.fsUtils.copyDirectorySync(pluginLibDir, outputDir);
-        }
+      if (buildDir.existsSync()) {
+        buildDir.deleteSync(recursive: true);
       }
+      final RunResult result = await _processUtils.run(<String>[
+        tizenSdk.tizenCli.path,
+        'build-native',
+        '-a',
+        tizenArch,
+        '-C',
+        buildConfig,
+        '-c',
+        tizenSdk.defaultNativeCompiler,
+        '-r',
+        rootstrap.id,
+        '-e',
+        extraOptions.join(' '),
+        '--',
+        pluginDir.path,
+      ], environment: variables);
+      if (result.exitCode != 0) {
+        throwToolExit('Failed to build plugins:\n$result');
+      }
+
+      final File sharedLib =
+          buildDir.childFile('lib' + (plugin.toMap()['sofile'] as String));
+      if (!sharedLib.existsSync()) {
+        throwToolExit(
+          'Built ${plugin.name} but the file ${sharedLib.path} is not found:\n'
+          '${result.stdout}',
+        );
+      }
+      final Directory outputDir = ephemeralDir
+          .childDirectory('lib')
+          .childDirectory(tizenArch)
+            ..createSync(recursive: true);
+      sharedLib.copySync(outputDir.childFile('libflutter_plugins.so').path);
     }
 
-    final Depfile pluginDepfile = await _createDepfile(environment);
-    final DepfileService depfileService = DepfileService(
-      fileSystem: environment.fileSystem,
-      logger: environment.logger,
-    );
-    depfileService.writeToFile(
-      pluginDepfile,
-      environment.buildDir.childFile('tizen_plugins.d'),
-    );
+    // final Depfile pluginDepfile = await _createDepfile(environment);
+    // final DepfileService depfileService = DepfileService(
+    //   fileSystem: environment.fileSystem,
+    //   logger: environment.logger,
+    // );
+    // depfileService.writeToFile(
+    //   pluginDepfile,
+    //   environment.buildDir.childFile('tizen_plugins.d'),
+    // );
   }
 
   // Helper method that creates a depfile which lists dependent input files

@@ -364,7 +364,7 @@ namespace Runner
     internal class GeneratedPluginRegistrant
     {
       {{#plugins}}
-        [DllImport("{{sofile}}")]
+        [DllImport("flutter_plugins.so")]
         public static extern void {{class}}RegisterWithRegistrar(IntPtr registrar);
       {{/plugins}}
 
