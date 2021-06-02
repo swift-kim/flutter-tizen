@@ -234,7 +234,8 @@ USER_LIB_DIRS = lib
 
     final List<String> userIncludes = <String>[];
     final List<String> userSources = <String>[];
-    final List<String> userLibs = <String>[];
+    final List<String> userStaticLibs = <String>[];
+    final List<String> userSharedLibs = <String>[];
 
     for (final TizenPlugin plugin in nativePlugins) {
       inputs.add(plugin.projectFile);
@@ -260,16 +261,22 @@ USER_LIB_DIRS = lib
       }
 
       for (final String libName in plugin.getProperty('USER_LIBS').split(' ')) {
-        final File libFile = plugin.directory
+        final File staticLib = plugin.directory
             .childDirectory('lib')
             .childDirectory(getTizenBuildArch(buildInfo.targetArch))
-            .childFile('lib$libName.so');
-        if (libFile.existsSync()) {
-          userLibs.add(libName);
-          libFile.copySync(libDir.childFile(libFile.basename).path);
+            .childFile('lib$libName.a');
+        final File sharedLib = staticLib.parent.childFile('lib$libName.so');
 
-          inputs.add(libFile);
-          outputs.add(libDir.childFile(libFile.basename));
+        if (staticLib.existsSync()) {
+          userStaticLibs.add(staticLib.path);
+
+          inputs.add(staticLib);
+        } else if (sharedLib.existsSync()) {
+          userSharedLibs.add(libName);
+          sharedLib.copySync(libDir.childFile(sharedLib.basename).path);
+
+          inputs.add(sharedLib);
+          outputs.add(libDir.childFile(sharedLib.basename));
         }
       }
 
@@ -310,7 +317,8 @@ USER_LIB_DIRS = lib
       '-I"${getUnixPath(clientWrapperDir.childDirectory('include').path)}"',
       '-I"${getUnixPath(publicDir.path)}"',
       ...userIncludes.map(getUnixPath).map((String path) => '-I"$path"'),
-      ...userLibs.map((String lib) => '-l$lib'),
+      ...userStaticLibs.map(getUnixPath),
+      //...userLibs.map((String lib) => '-l$lib'),
       '-L"${getUnixPath(libDir.path)}"',
       '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
     ];
