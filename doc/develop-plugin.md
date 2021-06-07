@@ -1,31 +1,31 @@
 # Writing a new plugin to use platform features
 
-This document helps you understand how to get started with developing Flutter plugins for Tizen platform to enable platform-specific functionality. This document assumes you already have basic understanding of [how plugins are different from pure Dart packages](https://flutter.dev/docs/development/packages-and-plugins/developing-packages#types) and [how platform channels work in Flutter](https://flutter.dev/docs/development/platform-integration/platform-channels).
+This document helps you understand how to get started with developing Flutter plugins for Tizen devices to enable platform-specific functionality. This document assumes you already have basic understanding of [how plugins are different from general Dart packages](https://flutter.dev/docs/development/packages-and-plugins/developing-packages#types) and [how platform channels work in Flutter](https://flutter.dev/docs/development/platform-integration/platform-channels).
 
-## Types of plugins
+## Overview
 
-Flutter plugins for Tizen can be classified into various types as follows.
+Here are a few things you might consider when developing Flutter plugins for Tizen and other platforms.
 
 ### Implementation language
 
 - C/C++ (based on platform channels)
 - Dart (based on Dart FFI)
 
-Most of Flutter plugins are written in their platform native languages, such as Java on Android and C/C++ on Linux. However, some Windows plugins like [`path_provider_windows`](https://github.com/flutter/plugins/tree/master/packages/path_provider/path_provider_windows) and Tizen plugins like [`url_launcher_tizen`](https://github.com/flutter-tizen/plugins/tree/master/packages/url_launcher) are written in Dart using [Dart FFI](https://dart.dev/guides/libraries/c-interop) without any native code. To learn more about FFI-based plugins, read [Flutter Docs: Binding to native code using dart:ffi](https://flutter.dev/docs/development/platform-integration/c-interop). This document only covers native type plugins written in Tizen's native language (C/C++).
+Typical Flutter plugins are written in their platform native languages, such as Java on Android and C/C++ on Tizen. However, some Windows plugins such as [`path_provider_windows`](https://github.com/flutter/plugins/tree/master/packages/path_provider/path_provider_windows) and Tizen plugins such as [`url_launcher_tizen`](https://github.com/flutter-tizen/plugins/tree/master/packages/url_launcher) are written in pure Dart using [Dart FFI](https://dart.dev/guides/libraries/c-interop) without any native code. To learn more about FFI-based plugins, you might read [Flutter Docs: Binding to native code using dart:ffi](https://flutter.dev/docs/development/platform-integration/c-interop). This document only covers native Tizen plugins written in C/C++.
 
 ### Targeting multiple platforms vs. Tizen only
 
-A Flutter plugin may support more than one platforms such as Android, iOS, Tizen, Windows, and so on. Typical examples of plugins that target multiple platforms are [Flutter 1st-party plugins](https://github.com/flutter/plugins) created by the Flutter team. Most of their plugins have implementations for Android and iOS by default, and some of them are implemented for web, Windows, macOS, and Linux as well. The [federated plugins](https://flutter.dev/docs/development/packages-and-plugins/developing-packages#federated-plugins) structure is used as a modern standard when creating plugins that support various platforms. A federated plugin typically consists of an app-facing package, a **platform interface package**, and platform package(s) for each platform.
+A Flutter plugin may support more than one platforms. For example, [Flutter 1st-party plugins](https://github.com/flutter/plugins) developed by the Flutter team typically support two (Android, iOS) or more platforms (web, Windows, macOS, Linux), based on the team's priority and the availability of the functionality on the platform.
 
-On the other hand, if necessary, you can create a plugin that only supports a single platform, e.g. [`flutter_plugin_android_lifecycle`](https://github.com/flutter/plugins/tree/master/packages/flutter_plugin_android_lifecycle) for Android and [`wearable_rotary`](https://github.com/flutter-tizen/plugins/tree/master/packages/wearable_rotary) for Tizen. Creating this type of plugin is practically not different from creating a federated plugin, except that you don't need to create multiple packages including a platform interface pacakge.
+[Federated plugins](https://flutter.dev/docs/development/packages-and-plugins/developing-packages#federated-plugins) are a typical way of creating plugins that have different platform implementations. A federated plugin consists of an app-facing package, a **platform interface package**, and platform package(s) for each platform. On the other hand, it is also possible to create a plugin that only supports a single platform, e.g. [`flutter_plugin_android_lifecycle`](https://github.com/flutter/plugins/tree/master/packages/flutter_plugin_android_lifecycle) for Android and [`wearable_rotary`](https://github.com/flutter-tizen/plugins/tree/master/packages/wearable_rotary) for Tizen. In this case, there's no need to create a platform interface package. Instead, you can put everything into a single package.
 
 ### Extending existing plugins vs. Creating new plugins
 
-Adding a new platform implementation to an existing federated plugin is simple: create a platform package that implements the platform interface of the target plugin. It is not strictly required for the new package to get endorsed by the original plugin author, and such package is called _unendorsed_ plugin. A developer can still use the unendorsed implementation of the plugin in their app, but must add the platform package to the app's pubspec file. For example, if there is a `foobar_tizen` implementation for the `foobar` plugin, the app's pubspec file must include both the `foobar` and `foobar_tizen` dependencies unless the original `foobar` author adds `foobar_tizen` as a dependency in the pubspec of `foobar`.
+Adding a new platform support to an existing federated plugin is simple: create a platform package that implements the platform interface of the plugin. It is technically not required for the original plugin author to _endorse_ the new platform implementation. A developer can still use the unendorsed implementation of the plugin in their app, but must specify both package dependencies in the app's pubspec file. For example, if there is a `foobar_tizen` implementation for the `foobar` plugin, the app's pubspec file must include both the `foobar` and `foobar_tizen` dependencies, unless the original `foobar` author adds `foobar_tizen` as a dependency in the pubspec of `foobar`.
 
-Note: Even if the original plugin is not a federated plugin (has no platform interface package), you can still create an unendorsed platform implementation of the plugin by implicitly implementing the plugin's platform channels.
+Note: Even if the original plugin is not a federated plugin (has no platform interface package), it is possible to create an unendorsed platform implementation of the plugin by implicitly implementing the plugin's platform channels.
 
-Obviously, you can also create a plugin that has never existed in the world. The new plugin can be either a single package plugin or a federated plugin, depending on whether you want to target Tizen platform only or other platforms as well. The former is usually the case where the functionality that you want to implement is specific to Tizen, but not common to other platforms. 
+You can create a new plugin from scratch if the functionality you want to implement is not implemented by any other plugin, or is specific to Tizen. The new plugin can be either a single package plugin or a federated plugin, depending on whether you want to target the Tizen platform only or other platforms as well.
 
 ## Create a plugin package
 
@@ -35,13 +35,13 @@ If you're to extend an existing `foobar` plugin for Tizen, it is common to add t
 flutter-tizen create --template plugin foobar_tizen
 ```
 
-Otherwise if you are creating a new plugin from scratch, make sure the package name is in the `lowercase_with_underscores` format:
+Otherwise, follow the `lowercase_with_underscores` style convention to name your package:
 
 ```sh
 flutter-tizen create --template plugin plugin_name
 ```
 
-Once the package is created, you will be prompted to add some information to the pubspec file. Open the main `plugin_name/` directory in VS Code, locate the `pubspec.yaml` file, and replace the `some_platform:` map with `tizen:` as suggested by the tool. This information is needed by the flutter-tizen tool to find and register the plugin when building an app that depends on the plugin.
+Once the package is created, you will be prompted to add some information to its pubspec file. Open the main `plugin_name/` directory in VS Code, locate the `pubspec.yaml` file, and replace the `some_platform:` map with `tizen:` as suggested by the tool. This information is needed by the flutter-tizen tool to find and register the plugin when building an app that depends on the plugin.
 
 ```text
 The `pubspec.yaml` under the project directory must be updated to support Tizen.
@@ -67,7 +67,7 @@ The API of the plugin package is defined in Dart code. Locate the file `lib/plug
 
 ### 2. Add Tizen platform code (.cc)
 
-Before getting started, it is recommended to install the [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) and add the `flutter-tizen/bin/cache/artifacts/engine/common` directory to your workspace in VS Code.
+Note: Before getting started, it is recommended to install the [C/C++ extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools) and add the `flutter-tizen/bin/cache/artifacts/engine/common` directory to your workspace in VS Code.
 
 The implementation of the plugin can be found in the `tizen/src/plugin_name_plugin.cc` file. In this file, you will see:
 
@@ -77,7 +77,7 @@ The implementation of the plugin can be found in the `tizen/src/plugin_name_plug
 The result of the method call can be either:
 
 - `Success()`: Indicates that the call completed successfully. The argument can be either empty or of the `flutter::EncodableValue` type.
-- `Error()`: Indicates that the call was understood but handling failed in some way. The error can be caught as a `PlatformException` instance by the caller.
+- `Error()`: Indicates that the call was understood but handling failed in some way. The error can be caught as a `PlatformException` by the caller.
 - `NotImplemented()`
 
 Any arguments to the method call can be retrieved from the `method_call` variable. For example, if a `map<String, dynamic>` is passed from Dart code:
@@ -89,7 +89,7 @@ await _channel.invokeMethod<void>(
 );
 ```
 
-it can be parsed by `HandleMethodCall()` in the following way:
+it can be parsed by the native implementation in the following way:
 
 ```cpp
 template <typename T>
@@ -125,16 +125,18 @@ void HandleMethodCall(
 }
 ```
 
+Note: The standard platform channels use a standard message codec that supports efficient binary serialization of simple JSON-like values, such as booleans, numbers, Strings, byte buffers, and Lists and Maps of these. See [StandardMessageCodec class](https://api.flutter.dev/flutter/services/StandardMessageCodec-class.html) for supported data types.
+
 #### Available APIs
 
-Types such as `flutter::MethodCall` and `flutter::EncodableValue` are defined in `cpp_client_wrapper` headers. APIs that you can use in your plugin code include:
+Types such as `flutter::MethodCall` and `flutter::EncodableValue` in the above example are defined in `cpp_client_wrapper` headers. APIs that you can use in your plugin code include:
 
 - C++17 standards
 - `cpp_client_wrapper` APIs (in `flutter-tizen/bin/cache/artifacts/engine/common/cpp_client_wrapper/include/flutter`)
 - Tizen native APIs ([Wearable API references](https://docs.tizen.org/application/native/api/wearable/latest/index.html))
-- External (static/shared) libraries, if any
+- External native libraries, if any (static/shared)
 
-Note that the API references for Tizen TV are not publicly available. However, most of the Tizen core APIs are common for the wearable and TV profiles, so you may refer to the wearable API references to develop plugins for TV devices.
+Note: The API references for Tizen TV are not publicly available. However, most of the Tizen core APIs are common to both wearable and TV profiles, so you can refer to the wearable API references when developing plugins for TV devices.
 
 #### Channel types
 
@@ -145,9 +147,9 @@ You can use not only `MethodChannel` but also other types of platform channels f
 
 ## Publish the plugin
 
-You can share your plugin with other developers by publishing it on pub.dev. Refer to these pages for detailed instructions:
+You can share your plugin with other developers by publishing it on [pub.dev](https://pub.dev). You may refer to the following pages for detailed instructions.
 
 - [Flutter Docs: Publishing your package](https://flutter.dev/docs/development/packages-and-plugins/developing-packages#publish)
 - [Dart Docs: Publishing packages](https://dart.dev/tools/pub/publishing)
 
-You can use `flutter-tizen pub` instead of `flutter pub` if `flutter` is not in your PATH.
+Note: You can use the `flutter-tizen pub` command instead of `flutter pub` if `flutter` is not in your PATH.
