@@ -107,20 +107,34 @@ class TizenSdk {
   String get defaultGccVersion => '9.2';
 
   Rootstrap getFlutterRootstrap({
-    String profile = 'common-4.0',
+    String profile = 'wearable-4.0',
     @required String arch,
   }) {
-    // Defaults to wearable if the profile name is common.
-    profile = profile.replaceFirst('common', 'wearable');
+    // e.g. tv-4.0 => wearable-4.0, common-5.5 => iot-headed-5.5
+    profile = profile.replaceFirst('tv', 'wearable');
+    profile = profile.replaceFirst('common', 'iot-headed');
 
     String id;
     if (arch == 'arm64') {
-      // The arm64 build is only supported by the iot-headed-6.0 profile.
+      // The iot-headed-6.0 rootstrap must be used to build for arm64.
       profile = 'iot-headed-6.0';
       id = '$profile-device64.core';
     } else {
       id = '$profile-${arch == 'x86' ? 'emulator' : 'device'}.core';
     }
+
+    '''
+<?xml version="1.0"?>
+<extension point="rootstrapDefinition">
+  <rootstrap id="wearable-4.0-arm.flutter" name="Tizen Device 4.0" version="Wearable 4.0" architecture="armel" path="#{SBI_HOME}/../../platforms/tizen-4.0/wearable/rootstraps/wearable-4.0-device.core" supportToolchainType="tizen.core">
+    <property key="DEV_PACKAGE_CONFIG_PATH" value="#{SBI_HOME}/../../platforms/tizen-4.0/wearable/rootstraps/info/wearable-4.0-device.core.dev.xml" />
+    <property key="LINKER_MISCELLANEOUS_OPTION" value="-static-libstdc++" />
+    <property key="COMPILER_MISCELLANEOUS_OPTION" value="" />
+    <toolchain name="gcc" version="9.2" />
+    <tool name="EDJE_CC" version="" path="#{SBI_HOME}/../../platforms/tizen-4.0/common/efl-tool/efl-tools/bin/edje_cc" />
+  </rootstrap>
+</extension>
+''';
 
     // Tizen SBI reads rootstrap definitions from this directory.
     final Directory pluginsDir = toolsDirectory

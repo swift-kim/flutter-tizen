@@ -79,7 +79,7 @@ class TizenBuilder {
       );
     }
 
-    updateManifest(tizenProject, tizenBuildInfo.buildInfo);
+    updateManifest(tizenProject, tizenBuildInfo);
 
     final Directory outputDir =
         project.directory.childDirectory('build').childDirectory('tizen');
@@ -222,18 +222,21 @@ class TizenBuilder {
   }
 
   /// Update tizen-manifest.xml with the new build info if needed.
-  static void updateManifest(TizenProject project, BuildInfo buildInfo) {
-    final String buildName =
-        buildInfo.buildName ?? project.parent.manifest.buildName;
-    if (buildName == null) {
-      return;
-    }
+  static void updateManifest(TizenProject project, TizenBuildInfo buildInfo) {
     final TizenManifest manifest =
         TizenManifest.parseFromXml(project.manifestFile);
     if (manifest == null) {
       return;
     }
-    manifest.version = buildName;
+    final String buildName =
+        buildInfo.buildInfo.buildName ?? project.parent.manifest.buildName;
+    if (buildName != null) {
+      manifest.version = buildName;
+    }
+    final String deviceProfile = buildInfo.deviceProfile;
+    if (deviceProfile != null) {
+      manifest.profileName = deviceProfile;
+    }
     project.manifestFile.writeAsStringSync(manifest.toString());
   }
 }

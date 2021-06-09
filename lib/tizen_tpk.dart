@@ -166,14 +166,16 @@ class TizenManifest {
 
   /// The package version number in the "x.y.z" format.
   String get version => _manifest.getAttribute('version');
-  set version(String version) => _manifest.setAttribute('version', version);
+  set version(String value) => _manifest.setAttribute('version', value);
 
   /// The target API version number.
   String get apiVersion => _manifest.getAttribute('api-version');
 
-  /// The profile name representing a device type.
+  /// The profile name representing the device type.
   String get profileName =>
       _manifest.findElements('profile').first.getAttribute('name');
+  set profileName(String value) =>
+      _manifest.findElements('profile').first.setAttribute('name', value);
 
   /// The fully qualified profile string. (e.g. `wearable-5.5`)
   String get profile => '$profileName-$apiVersion';

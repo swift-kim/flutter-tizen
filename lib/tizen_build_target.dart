@@ -471,7 +471,7 @@ class DotnetTpk {
       dotnetCli.path,
       'build',
       '-c',
-      'Release',
+      if (buildMode.isPrecompiled) 'Release' else 'Debug',
       '-o',
       '${outputDir.path}/', // The trailing '/' is needed.
       '/p:FlutterEmbeddingVersion=$embeddingVersion',
