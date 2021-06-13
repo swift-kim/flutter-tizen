@@ -83,7 +83,7 @@ Future<void> main(List<String> args) async {
     () => <FlutterCommand>[
       // Commands directly from flutter_tools.
       ConfigCommand(verboseHelp: verboseHelp),
-      DevicesCommand(),
+      DevicesCommand(verboseHelp: verboseHelp),
       DoctorCommand(verbose: verbose),
       EmulatorsCommand(),
       FormatCommand(),
@@ -100,7 +100,7 @@ Future<void> main(List<String> args) async {
       TizenAttachCommand(verboseHelp: verboseHelp),
       TizenBuildCommand(verboseHelp: verboseHelp),
       TizenCleanCommand(verbose: verbose),
-      TizenCreateCommand(),
+      TizenCreateCommand(verboseHelp: verboseHelp),
       TizenDriveCommand(verboseHelp: verboseHelp),
       TizenPackagesCommand(),
       TizenRunCommand(verboseHelp: verboseHelp),
@@ -117,7 +117,10 @@ Future<void> main(List<String> args) async {
       DoctorValidatorsProvider: () => TizenDoctorValidatorsProvider(),
       TizenSdk: () => TizenSdk.locateSdk(),
       TizenArtifacts: () => TizenArtifacts(),
-      TizenWorkflow: () => TizenWorkflow(),
+      TizenWorkflow: () => TizenWorkflow(
+            tizenSdk: tizenSdk,
+            operatingSystemUtils: globals.os,
+          ),
       TizenValidator: () => TizenValidator(),
       EmulatorManager: () => TizenEmulatorManager(
             tizenSdk: tizenSdk,
