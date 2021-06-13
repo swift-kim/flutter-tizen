@@ -29,11 +29,11 @@ import 'package:flutter_tools/src/project.dart';
 import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 
+import 'tizen/application_package.dart';
+import 'tizen/tizen_sdk.dart';
 import 'tizen_artifacts.dart';
 import 'tizen_build_target.dart';
 import 'tizen_project.dart';
-import 'tizen_sdk.dart';
-import 'tizen_tpk.dart';
 
 /// The define to control what Tizen device is built for.
 const String kDeviceProfile = 'DeviceProfile';

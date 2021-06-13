@@ -1,4 +1,4 @@
-// Copyright 2020 Samsung Electronics Co., Ltd. All rights reserved.
+// Copyright 2021 Samsung Electronics Co., Ltd. All rights reserved.
 // Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -26,9 +26,9 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:process/process.dart';
 
-import 'tizen_builder.dart';
+import '../tizen_builder.dart';
+import 'application_package.dart';
 import 'tizen_sdk.dart';
-import 'tizen_tpk.dart';
 
 /// Tizen device implementation.
 ///

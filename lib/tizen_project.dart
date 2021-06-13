@@ -11,8 +11,8 @@ import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
 import 'package:xml/xml.dart';
 
+import 'tizen/application_package.dart';
 import 'tizen_plugins.dart';
-import 'tizen_tpk.dart';
 
 /// Source: [WindowsProject] in `project.dart`
 class TizenProject extends FlutterProjectPlatform {

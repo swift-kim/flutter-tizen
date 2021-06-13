@@ -1,4 +1,4 @@
-// Copyright 2020 Samsung Electronics Co., Ltd. All rights reserved.
+// Copyright 2021 Samsung Electronics Co., Ltd. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -13,7 +13,7 @@ import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:meta/meta.dart';
 
-import 'tizen_tpk.dart';
+import 'application_package.dart';
 
 TizenSdk get tizenSdk => context.get<TizenSdk>();
 

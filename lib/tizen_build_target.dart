@@ -16,22 +16,22 @@ import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/build_system/depfile.dart';
-import 'package:flutter_tools/src/build_system/targets/assets.dart';
-import 'package:flutter_tools/src/build_system/targets/icon_tree_shaker.dart';
 import 'package:flutter_tools/src/build_system/exceptions.dart';
 import 'package:flutter_tools/src/build_system/source.dart';
 import 'package:flutter_tools/src/build_system/targets/android.dart';
+import 'package:flutter_tools/src/build_system/targets/assets.dart';
 import 'package:flutter_tools/src/build_system/targets/common.dart';
+import 'package:flutter_tools/src/build_system/targets/icon_tree_shaker.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
 
+import 'tizen/application_package.dart';
+import 'tizen/tizen_sdk.dart';
 import 'tizen_artifacts.dart';
 import 'tizen_builder.dart';
 import 'tizen_plugins.dart';
 import 'tizen_project.dart';
-import 'tizen_sdk.dart';
-import 'tizen_tpk.dart';
 
 /// Prepares the pre-built flutter bundle.
 ///
