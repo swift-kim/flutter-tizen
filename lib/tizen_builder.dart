@@ -127,7 +127,7 @@ class TizenBuilder {
       platform: globals.platform,
     );
 
-    final Target target = buildInfo.isDebug
+    final Target target = buildInfo.mode.isJit
         ? DebugTizenApplication(tizenBuildInfo)
         : ReleaseTizenApplication(tizenBuildInfo);
 

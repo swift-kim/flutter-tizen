@@ -119,7 +119,7 @@ class TizenDevice extends Device {
   @override
   Future<bool> supportsRuntimeMode(BuildMode buildMode) async {
     if (await isLocalEmulator) {
-      return buildMode == BuildMode.debug;
+      return buildMode.isJit;
     } else {
       return buildMode != BuildMode.jitRelease;
     }
@@ -308,7 +308,8 @@ class TizenDevice extends Device {
     bool ipv6 = false,
     String userIdentifier,
   }) async {
-    if (!debuggingOptions.buildInfo.isDebug && await isLocalEmulator) {
+    if (await isLocalEmulator &&
+        debuggingOptions.buildInfo.mode.isPrecompiled) {
       _logger.printError(
           'Profile and release builds are not supported on emulator targets.');
       return LaunchResult.failed();

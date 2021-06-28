@@ -73,11 +73,11 @@ abstract class TizenAssetBundle extends Target {
           ..createSync(recursive: true);
 
     // Only copy the prebuilt runtimes and kernel blob in debug mode.
-    if (buildMode == BuildMode.debug) {
+    if (buildMode.isJit) {
       final String vmSnapshotData = environment.artifacts
-          .getArtifactPath(Artifact.vmSnapshotData, mode: BuildMode.debug);
+          .getArtifactPath(Artifact.vmSnapshotData, mode: buildMode);
       final String isolateSnapshotData = environment.artifacts
-          .getArtifactPath(Artifact.isolateSnapshotData, mode: BuildMode.debug);
+          .getArtifactPath(Artifact.isolateSnapshotData, mode: buildMode);
       environment.buildDir
           .childFile('app.dill')
           .copySync(outputDirectory.childFile('kernel_blob.bin').path);
@@ -116,9 +116,10 @@ class DebugTizenApplication extends TizenAssetBundle {
   @override
   List<Source> get inputs => <Source>[
         ...super.inputs,
-        const Source.artifact(Artifact.vmSnapshotData, mode: BuildMode.debug),
-        const Source.artifact(Artifact.isolateSnapshotData,
-            mode: BuildMode.debug),
+        Source.artifact(Artifact.vmSnapshotData,
+            mode: buildInfo.buildInfo.mode),
+        Source.artifact(Artifact.isolateSnapshotData,
+            mode: buildInfo.buildInfo.mode),
       ];
 
   @override

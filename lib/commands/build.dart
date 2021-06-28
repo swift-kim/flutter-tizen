@@ -58,10 +58,10 @@ class BuildTpkCommand extends BuildSubCommand with TizenExtension {
 
   /// See: [android.validateBuild] in `build_validation.dart`
   void validateBuild(TizenBuildInfo tizenBuildInfo) {
-    if (tizenBuildInfo.buildInfo.mode.isPrecompiled &&
-        tizenBuildInfo.targetArch == 'x86') {
-      throwToolExit('x86 ABI does not support AOT compilation.');
-    }
+    // if (tizenBuildInfo.buildInfo.mode.isPrecompiled &&
+    //     tizenBuildInfo.targetArch == 'x86') {
+    //   throwToolExit('x86 ABI does not support AOT compilation.');
+    // }
   }
 
   /// See: [BuildApkCommand.runCommand] in `build_apk.dart`
