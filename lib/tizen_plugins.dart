@@ -190,12 +190,27 @@ Future<String> _createEntrypoint(
 //
 // @dart=${languageVersion.major}.${languageVersion.minor}
 
+// ignore_for_file: unused_element
+
 import '$mainImport' as entrypoint;
 import 'generated_plugin_registrant.dart';
 
-Future<void> main() async {
-  registerPlugins();
-  entrypoint.main();
+@pragma('vm:entry-point')
+class _PluginRegistrant {
+  @pragma('vm:entry-point')
+  static void register() {
+    registerPlugins();
+  }
+}
+
+typedef _UnaryFunction = dynamic Function(List<String> args);
+
+void main(List<String> args) {
+  if (entrypoint.main is _UnaryFunction) {
+    (entrypoint.main as _UnaryFunction)(args);
+  } else {
+    entrypoint.main();
+  }
 }
 ''');
   return entrypoint.path;
