@@ -26,6 +26,7 @@ import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
 
+import 'build_targets/plugin.dart';
 import 'tizen_builder.dart';
 import 'tizen_plugins.dart';
 import 'tizen_project.dart';
@@ -58,6 +59,7 @@ abstract class TizenAssetBundle extends Target {
   @override
   List<Target> get dependencies => const <Target>[
         KernelSnapshot(),
+        TizenDartPluginRegistrant(),
       ];
 
   @override
@@ -561,6 +563,7 @@ class TizenAotElf extends AotElfBase {
   @override
   List<Target> get dependencies => const <Target>[
         KernelSnapshot(),
+        TizenDartPluginRegistrant(),
       ];
 }
 

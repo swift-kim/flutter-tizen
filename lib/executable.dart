@@ -13,6 +13,7 @@ import 'package:flutter_tools/src/application_package.dart';
 import 'package:flutter_tools/src/base/context.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/template.dart';
+import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/config.dart';
 import 'package:flutter_tools/src/commands/devices.dart';
@@ -43,6 +44,7 @@ import 'commands/packages.dart';
 import 'commands/precache.dart';
 import 'commands/run.dart';
 import 'commands/test.dart';
+import 'tizen_build_system.dart';
 import 'tizen_cache.dart';
 import 'tizen_device_discovery.dart';
 import 'tizen_doctor.dart';
@@ -168,6 +170,11 @@ Future<void> main(List<String> args) async {
             processManager: globals.processManager,
             logger: globals.logger,
             fileSystem: globals.fs,
+          ),
+      BuildSystem: () => TizenBuildSystem(
+            fileSystem: globals.fs,
+            logger: globals.logger,
+            platform: globals.platform,
           ),
       if (verbose && !muteCommandLogging)
         Logger: () => VerboseLogger(StdoutLogger(
