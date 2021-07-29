@@ -16,8 +16,8 @@ import 'package:flutter_tools/src/project.dart';
 import '../../tizen_plugins.dart';
 
 /// Source: [DartPluginRegistrantTarget] in `dart_plugin_registrant.dart`
-class TizenDartPluginRegistrant extends Target {
-  const TizenDartPluginRegistrant();
+class DartPluginRegistrant extends Target {
+  const DartPluginRegistrant();
 
   @override
   String get name => 'tizen_dart_plugin_registrant';
@@ -65,7 +65,7 @@ class TizenDartPluginRegistrant extends Target {
         .childDirectory('.dart_tool')
         .childDirectory('flutter_build')
         .childFile('generated_main.dart');
-    createEntrypointWithPluginRegistrant(
+    createMainDartWithPluginRegistrant(
       dartPlugins,
       packageConfig,
       mainUri.toString(),

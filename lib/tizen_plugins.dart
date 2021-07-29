@@ -136,7 +136,7 @@ mixin DartPluginRegistry on FlutterCommand {
 }
 
 /// Source: [generateMainDartWithPluginRegistrant] in `flutter_plugins.dart`
-void createEntrypointWithPluginRegistrant(
+void createMainDartWithPluginRegistrant(
   List<TizenPlugin> plugins,
   PackageConfig packageConfig,
   String currentMainUri,

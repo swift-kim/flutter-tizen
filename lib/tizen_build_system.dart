@@ -12,7 +12,7 @@ import 'package:flutter_tools/src/build_system/targets/localizations.dart';
 import 'package:flutter_tools/src/resident_runner.dart';
 import 'package:meta/meta.dart';
 
-import 'build_targets/plugin.dart';
+import 'build_targets/plugins.dart';
 
 class TizenBuildSystem extends FlutterBuildSystem {
   const TizenBuildSystem({
@@ -37,7 +37,7 @@ class TizenBuildSystem extends FlutterBuildSystem {
     if (target is GenerateLocalizationsTarget) {
       target = CompositeTarget(<Target>[
         target,
-        const TizenDartPluginRegistrant(),
+        const DartPluginRegistrant(),
       ]);
     }
     return super.buildIncremental(target, environment, previousBuild);
