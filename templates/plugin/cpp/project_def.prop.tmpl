@@ -2,7 +2,7 @@
 # for details.
 
 APPNAME = {{projectName}}_plugin
-type = sharedLib
+type = staticLib
 profile = common-4.0
 
 # Source files
@@ -22,8 +22,8 @@ USER_LFLAGS =
 # Libraries and objects
 # To provide libraries for your plugin, you must put them in specific
 # directories that match their supporting cpu architecture type.
-# Due to compatibility issue with Tizen CLI, directory names must be armel for arm 
-# and i586 for x86.
+# Due to compatibility issue with Tizen CLI, directory names must be armel
+# for arm, aarch64 for arm64, and i586 for x86.
 USER_LIB_DIRS = lib/${BUILD_ARCH}
 USER_LIBS =
 USER_OBJS =
