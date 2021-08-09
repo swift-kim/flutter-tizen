@@ -68,6 +68,10 @@ class NativePlugins extends Target {
     final Directory rootDir = environment.buildDir
         .childDirectory('tizen_plugins')
           ..createSync(recursive: true);
+    final Directory includeDir = rootDir.childDirectory('include')
+      ..createSync(recursive: true);
+    final Directory libDir = rootDir.childDirectory('lib')
+      ..createSync(recursive: true);
     final File projectDef = rootDir.childFile('project_def.prop');
 
     final TizenManifest tizenManifest =
@@ -76,22 +80,10 @@ class NativePlugins extends Target {
     final String apiVersion = tizenManifest.apiVersion;
     inputs.add(tizenProject.manifestFile);
 
-    projectDef.writeAsStringSync('''
-APPNAME = flutter_plugins
-type = sharedLib
-profile = $profile-$apiVersion
-
-USER_CPP_DEFS = TIZEN_DEPRECATION DEPRECATION_WARNING FLUTTER_PLUGIN_IMPL
-USER_CPPFLAGS_MISC = -c -fmessage-length=0
-USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
-''');
-
     // Check if there's anything to build.
     final List<TizenPlugin> nativePlugins =
         await findTizenPlugins(project, nativeOnly: true);
     if (nativePlugins.isEmpty) {
-      rootDir.deleteSync(recursive: true);
-
       depfileService.writeToFile(
         Depfile(inputs, outputs),
         environment.buildDir.childFile('tizen_plugins.d'),
@@ -100,63 +92,8 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
     }
 
     // Prepare for build.
-    final Directory includeDir = rootDir.childDirectory('include')
-      ..createSync(recursive: true);
-    final Directory libDir = rootDir.childDirectory('lib')
-      ..createSync(recursive: true);
-
-    final List<String> userIncludes = <String>[];
-    final List<String> userSources = <String>[];
-    final List<String> userLibs = <String>[];
-
-    for (final TizenPlugin plugin in nativePlugins) {
-      inputs.add(plugin.projectFile);
-
-      // TODO(swift-kim): Currently only checks for USER_INC_DIRS, USER_SRCS,
-      // and USER_LIBS. More properties may be parsed in the future.
-      userIncludes.addAll(plugin.getPropertyAsAbsolutePaths('USER_INC_DIRS'));
-      userSources.addAll(plugin.getPropertyAsAbsolutePaths('USER_SRCS'));
-
-      final Directory headerDir = plugin.directory.childDirectory('inc');
-      if (headerDir.existsSync()) {
-        headerDir
-            .listSync(recursive: true)
-            .whereType<File>()
-            .forEach(inputs.add);
-      }
-      final Directory sourceDir = plugin.directory.childDirectory('src');
-      if (sourceDir.existsSync()) {
-        sourceDir
-            .listSync(recursive: true)
-            .whereType<File>()
-            .forEach(inputs.add);
-      }
-
-      for (final String libName in plugin.getProperty('USER_LIBS')) {
-        File libFile = plugin.directory
-            .childDirectory('lib')
-            .childDirectory(getTizenBuildArch(buildInfo.targetArch))
-            .childFile('lib$libName.a');
-        if (!libFile.existsSync()) {
-          libFile = libFile.parent.childFile('lib$libName.so');
-          if (!libFile.existsSync()) {
-            continue;
-          }
-        }
-        userLibs.add(libName);
-        libFile.copySync(libDir.childFile(libFile.basename).path);
-
-        inputs.add(libFile);
-        outputs.add(libDir.childFile(libFile.basename));
-      }
-
-      // The plugin header is used when building native apps.
-      final File header = headerDir.childFile(plugin.fileName);
-      header.copySync(includeDir.childFile(header.basename).path);
-      outputs.add(includeDir.childFile(header.basename));
-    }
-
     final BuildMode buildMode = buildInfo.buildInfo.mode;
+    final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory engineDir =
         getEngineArtifactsDirectory(buildInfo.targetArch, buildMode);
     final File embedder =
@@ -173,24 +110,6 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
         .forEach(inputs.add);
     publicDir.listSync(recursive: true).whereType<File>().forEach(inputs.add);
 
-    userSources.add(clientWrapperDir.childFile('*.cc').path);
-
-    final Map<String, String> variables = <String, String>{
-      'PATH': getDefaultPathVariable(),
-      'USER_SRCS': userSources.map((String f) => f.toPosixPath()).join(' '),
-      'USER_LIBS': userLibs.join(' '),
-    };
-    final List<String> extraOptions = <String>[
-      '-lflutter_tizen_${buildInfo.deviceProfile}',
-      '-L"${engineDir.path.toPosixPath()}"',
-      '-fvisibility=hidden',
-      '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
-      '-I"${publicDir.path.toPosixPath()}"',
-      ...userIncludes.map((String f) => '-I"${f.toPosixPath()}"'),
-      '-L"${libDir.path.toPosixPath()}"',
-      '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
-    ];
-
     assert(tizenSdk != null);
     final Rootstrap rootstrap = tizenSdk.getFlutterRootstrap(
       profile: profile,
@@ -198,6 +117,131 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
       arch: buildInfo.targetArch,
     );
 
+    final List<String> userLibs = <String>[];
+
+    for (final TizenPlugin plugin in nativePlugins) {
+      // TODO: Refine this.
+      String projectDefContent = plugin.projectFile.readAsStringSync();
+      projectDefContent = projectDefContent.replaceFirst(
+          'type = sharedLib', 'type = staticLib');
+      projectDefContent = projectDefContent.replaceFirst(
+          'profile = common-5.5', 'profile = wearable-4.0');
+      plugin.projectFile.writeAsStringSync(projectDefContent);
+
+      final Map<String, String> variables = <String, String>{
+        'PATH': getDefaultPathVariable(),
+      };
+      final List<String> extraOptions = <String>[
+        '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
+        '-I"${publicDir.path.toPosixPath()}"',
+        '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
+      ];
+
+      // Run the native build.
+      final RunResult result = await _processUtils.run(<String>[
+        tizenSdk.tizenCli.path,
+        'build-native',
+        '-a',
+        getTizenCliArch(buildInfo.targetArch),
+        '-C',
+        buildConfig,
+        '-c',
+        tizenSdk.defaultNativeCompiler,
+        '-r',
+        rootstrap.id,
+        '-e',
+        extraOptions.join(' '),
+        '--',
+        plugin.directory.path,
+      ], environment: variables);
+      if (result.exitCode != 0) {
+        throwToolExit('Failed to build ${plugin.name} plugin:\n$result');
+      }
+
+      final String libName =
+          plugin.fileName.replaceFirst('.h', '').toLowerCase();
+      final File outputLib = plugin.directory
+          .childDirectory(buildConfig)
+          .childFile('lib$libName.a');
+      if (!outputLib.existsSync()) {
+        throwToolExit(
+          'Build succeeded but the file ${outputLib.path} is not found:\n'
+          '${result.stdout}',
+        );
+      }
+      userLibs.add(libName);
+      outputLib.copySync(libDir.childFile(outputLib.basename).path);
+
+      inputs.add(plugin.projectFile);
+
+      final Directory pluginIncludeDir = plugin.directory.childDirectory('inc');
+      if (pluginIncludeDir.existsSync()) {
+        pluginIncludeDir
+            .listSync(recursive: true)
+            .whereType<File>()
+            .forEach(inputs.add);
+      }
+      final Directory pluginSourceDir = plugin.directory.childDirectory('src');
+      if (pluginSourceDir.existsSync()) {
+        pluginSourceDir
+            .listSync(recursive: true)
+            .whereType<File>()
+            .forEach(inputs.add);
+      }
+      final Directory pluginLibDir = plugin.directory
+          .childDirectory('lib')
+          .childDirectory(getTizenBuildArch(buildInfo.targetArch));
+      if (pluginLibDir.existsSync()) {
+        pluginLibDir
+            .listSync()
+            .whereType<File>()
+            .where((File f) => f.basename.endsWith('.so'))
+            .forEach((File file) {
+          inputs.add(file);
+          file.copySync(libDir.childFile(file.basename).path);
+          outputs.add(libDir.childFile(file.basename));
+          // TODO: Refine this.
+          // Do not read from USER_LIBS; cannot distinguish between static libs and shared libs.
+          userLibs.add(
+              file.basename.replaceFirst('lib', '').replaceFirst('.so', ''));
+        });
+      }
+
+      // The plugin header is used when building native apps.
+      final File header = pluginIncludeDir.childFile(plugin.fileName);
+      header.copySync(includeDir.childFile(header.basename).path);
+      outputs.add(includeDir.childFile(header.basename));
+    }
+
+    projectDef.writeAsStringSync('''
+APPNAME = flutter_plugins
+type = sharedLib
+profile = $profile-$apiVersion
+
+USER_SRCS = ${clientWrapperDir.childFile('*.cc').path}
+
+USER_CPP_DEFS = TIZEN_DEPRECATION DEPRECATION_WARNING FLUTTER_PLUGIN_IMPL
+USER_CPPFLAGS_MISC = -c -fmessage-length=0
+USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
+
+USER_LIBS = ${userLibs.join(' ')}
+''');
+
+    final Map<String, String> variables = <String, String>{
+      'PATH': getDefaultPathVariable(),
+    };
+    final List<String> extraOptions = <String>[
+      '-lflutter_tizen_${buildInfo.deviceProfile}',
+      '-L"${engineDir.path.toPosixPath()}"',
+      '-fvisibility=hidden',
+      '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
+      '-I"${publicDir.path.toPosixPath()}"',
+      // TODO: If we want to move this to project_def (USER_LIB_DIRS), we need to move the files to tempDir/lib.
+      '-L"${libDir.path.toPosixPath()}"',
+      '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
+    ];
+
+    // TODO: Is this still required? Replace '0' with something else.
     // Create a temp directory to use as a build directory.
     // This is a workaround for the long path issue on Windows:
     // https://github.com/flutter-tizen/flutter-tizen/issues/122
@@ -205,9 +249,6 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
         .childDirectory('0')
           ..createSync(recursive: true);
     projectDef.copySync(tempDir.childFile(projectDef.basename).path);
-
-    final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
-    final Directory buildDir = tempDir.childDirectory(buildConfig);
 
     // Run the native build.
     final RunResult result = await _processUtils.run(<String>[
@@ -230,7 +271,8 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
       throwToolExit('Failed to build Flutter plugins:\n$result');
     }
 
-    final File outputLib = buildDir.childFile('libflutter_plugins.so');
+    final File outputLib =
+        tempDir.childDirectory(buildConfig).childFile('libflutter_plugins.so');
     if (!outputLib.existsSync()) {
       throwToolExit(
         'Build succeeded but the file ${outputLib.path} is not found:\n'
@@ -241,6 +283,14 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
     final File outputLibCopy =
         outputLib.copySync(rootDir.childFile(outputLib.basename).path);
     outputs.add(outputLibCopy);
+
+    // TODO: Is it right to do this here?
+    for (final File staticLib in libDir
+        .listSync()
+        .whereType<File>()
+        .where((File f) => f.basename.endsWith('.a'))) {
+      staticLib.deleteSync();
+    }
 
     depfileService.writeToFile(
       Depfile(inputs, outputs),
