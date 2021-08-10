@@ -116,6 +116,7 @@ class NativePlugins extends Target {
       arch: buildInfo.targetArch,
     );
 
+    final List<String> libPaths = <String>[];
     final List<String> userLibs = <String>[];
 
     for (final TizenPlugin plugin in nativePlugins) {
@@ -125,16 +126,16 @@ class NativePlugins extends Target {
       );
       copyDirectory(plugin.directory, pluginCopy.directory);
 
-      final List<String> newProperties = <String>[];
-      for (String property in plugin.projectFile.readAsLinesSync()) {
-        if (property.startsWith('type =')) {
-          property = 'type = staticLib';
-        } else if (property.startsWith('profile =')) {
-          property = 'profile = $profile-$apiVersion';
+      final List<String> properties = <String>[];
+      for (String line in plugin.projectFile.readAsLinesSync()) {
+        if (line.startsWith('type =')) {
+          line = 'type = staticLib';
+        } else if (line.startsWith('profile =')) {
+          line = 'profile = $profile-$apiVersion';
         }
-        newProperties.add(property);
+        properties.add(line);
       }
-      pluginCopy.projectFile.writeAsStringSync(newProperties.join('\n'));
+      pluginCopy.projectFile.writeAsStringSync(properties.join('\n'));
       inputs.add(plugin.projectFile);
 
       final Map<String, String> variables = <String, String>{
@@ -178,6 +179,7 @@ class NativePlugins extends Target {
         );
       }
       libFile.copySync(libDir.childFile(libFile.basename).path);
+      // libPaths.add(libFile.path);
       userLibs.add(libName);
 
       final Directory pluginIncludeDir = plugin.directory.childDirectory('inc');
@@ -198,10 +200,8 @@ class NativePlugins extends Target {
           .childDirectory('lib')
           .childDirectory(getTizenBuildArch(buildInfo.targetArch));
       if (pluginLibDir.existsSync()) {
-        pluginLibDir
-            .listSync()
-            .whereType<File>()
-            .where((File f) => f.basename.endsWith('.so'))
+        pluginLibDir.listSync().whereType<File>()
+            // .where((File f) => f.basename.endsWith('.so'))
             .forEach((File lib) {
           final File libCopy = libDir.childFile(lib.basename);
           lib.copySync(libCopy.path);
@@ -236,12 +236,17 @@ USER_LIBS = ${userLibs.join(' ')}
       'PATH': getDefaultPathVariable(),
     };
     final List<String> extraOptions = <String>[
+      // '-fvisibility=hidden',
       '-lflutter_tizen_${buildInfo.deviceProfile}',
       '-L"${engineDir.path.toPosixPath()}"',
       '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
       '-I"${publicDir.path.toPosixPath()}"',
-      '-fvisibility=hidden',
       '-L"${libDir.path.toPosixPath()}"',
+      // '-Wl,--whole-archive',
+      // ...libPaths,
+      // '-Wl,--no-whole-archive',
+      '-Wl,--undefined=StaticlibTestPluginRegisterWithRegistrar'
+      // '-Wl,--undefined=WebviewFlutterTizenPluginRegisterWithRegistrar',
     ];
 
     // Create a temp directory to use as a build directory.
