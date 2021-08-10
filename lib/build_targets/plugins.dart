@@ -91,7 +91,6 @@ class NativePlugins extends Target {
       return;
     }
 
-    // Prepare for build.
     final BuildMode buildMode = buildInfo.buildInfo.mode;
     final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory engineDir =
@@ -120,13 +119,23 @@ class NativePlugins extends Target {
     final List<String> userLibs = <String>[];
 
     for (final TizenPlugin plugin in nativePlugins) {
-      // TODO: Refine this.
-      String projectDefContent = plugin.projectFile.readAsStringSync();
-      projectDefContent = projectDefContent.replaceFirst(
-          'type = sharedLib', 'type = staticLib');
-      projectDefContent = projectDefContent.replaceFirst(
-          'profile = common-5.5', 'profile = wearable-4.0');
-      plugin.projectFile.writeAsStringSync(projectDefContent);
+      // Create a copy of the plugin to modify its projectFile.
+      final TizenPlugin pluginCopy = plugin.copyWith(
+        directory: environment.fileSystem.systemTempDirectory.createTempSync(),
+      );
+      copyDirectory(plugin.directory, pluginCopy.directory);
+
+      final List<String> newProperties = <String>[];
+      for (String property in plugin.projectFile.readAsLinesSync()) {
+        if (property.startsWith('type =')) {
+          property = 'type = staticLib';
+        } else if (property.startsWith('profile =')) {
+          property = 'profile = $profile-$apiVersion';
+        }
+        newProperties.add(property);
+      }
+      pluginCopy.projectFile.writeAsStringSync(newProperties.join('\n'));
+      inputs.add(plugin.projectFile);
 
       final Map<String, String> variables = <String, String>{
         'PATH': getDefaultPathVariable(),
@@ -137,7 +146,6 @@ class NativePlugins extends Target {
         '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
       ];
 
-      // Run the native build.
       final RunResult result = await _processUtils.run(<String>[
         tizenSdk.tizenCli.path,
         'build-native',
@@ -152,27 +160,25 @@ class NativePlugins extends Target {
         '-e',
         extraOptions.join(' '),
         '--',
-        plugin.directory.path,
+        pluginCopy.directory.path,
       ], environment: variables);
       if (result.exitCode != 0) {
         throwToolExit('Failed to build ${plugin.name} plugin:\n$result');
       }
 
       final String libName =
-          plugin.fileName.replaceFirst('.h', '').toLowerCase();
-      final File outputLib = plugin.directory
+          getLibNameFromFileName(plugin.fileName.toLowerCase());
+      final File libFile = pluginCopy.directory
           .childDirectory(buildConfig)
           .childFile('lib$libName.a');
-      if (!outputLib.existsSync()) {
+      if (!libFile.existsSync()) {
         throwToolExit(
-          'Build succeeded but the file ${outputLib.path} is not found:\n'
+          'Build succeeded but the file ${libFile.path} is not found:\n'
           '${result.stdout}',
         );
       }
+      libFile.copySync(libDir.childFile(libFile.basename).path);
       userLibs.add(libName);
-      outputLib.copySync(libDir.childFile(outputLib.basename).path);
-
-      inputs.add(plugin.projectFile);
 
       final Directory pluginIncludeDir = plugin.directory.childDirectory('inc');
       if (pluginIncludeDir.existsSync()) {
@@ -196,18 +202,17 @@ class NativePlugins extends Target {
             .listSync()
             .whereType<File>()
             .where((File f) => f.basename.endsWith('.so'))
-            .forEach((File file) {
-          inputs.add(file);
-          file.copySync(libDir.childFile(file.basename).path);
-          outputs.add(libDir.childFile(file.basename));
-          // TODO: Refine this.
-          // Do not read from USER_LIBS; cannot distinguish between static libs and shared libs.
-          userLibs.add(
-              file.basename.replaceFirst('lib', '').replaceFirst('.so', ''));
+            .forEach((File lib) {
+          final File libCopy = libDir.childFile(lib.basename);
+          lib.copySync(libCopy.path);
+          userLibs.add(getLibNameFromFileName(lib.basename));
+
+          inputs.add(lib);
+          outputs.add(libCopy);
         });
       }
 
-      // The plugin header is used when building native apps.
+      // The plugin header is used by the native app builder.
       final File header = pluginIncludeDir.childFile(plugin.fileName);
       header.copySync(includeDir.childFile(header.basename).path);
       outputs.add(includeDir.childFile(header.basename));
@@ -233,21 +238,17 @@ USER_LIBS = ${userLibs.join(' ')}
     final List<String> extraOptions = <String>[
       '-lflutter_tizen_${buildInfo.deviceProfile}',
       '-L"${engineDir.path.toPosixPath()}"',
-      '-fvisibility=hidden',
       '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
       '-I"${publicDir.path.toPosixPath()}"',
-      // TODO: If we want to move this to project_def (USER_LIB_DIRS), we need to move the files to tempDir/lib.
+      '-fvisibility=hidden',
       '-L"${libDir.path.toPosixPath()}"',
-      '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
     ];
 
-    // TODO: Is this still required? Replace '0' with something else.
     // Create a temp directory to use as a build directory.
     // This is a workaround for the long path issue on Windows:
     // https://github.com/flutter-tizen/flutter-tizen/issues/122
-    final Directory tempDir = environment.fileSystem.systemTempDirectory
-        .childDirectory('0')
-          ..createSync(recursive: true);
+    final Directory tempDir =
+        environment.fileSystem.systemTempDirectory.createTempSync();
     projectDef.copySync(tempDir.childFile(projectDef.basename).path);
 
     // Run the native build.
@@ -268,7 +269,7 @@ USER_LIBS = ${userLibs.join(' ')}
       tempDir.path,
     ], environment: variables);
     if (result.exitCode != 0) {
-      throwToolExit('Failed to build Flutter plugins:\n$result');
+      throwToolExit('Failed to build native plugins:\n$result');
     }
 
     final File outputLib =
@@ -279,17 +280,16 @@ USER_LIBS = ${userLibs.join(' ')}
         '${result.stdout}',
       );
     }
-
     final File outputLibCopy =
         outputLib.copySync(rootDir.childFile(outputLib.basename).path);
     outputs.add(outputLibCopy);
 
-    // TODO: Is it right to do this here?
-    for (final File staticLib in libDir
+    // Remove intermediate files.
+    for (final File lib in libDir
         .listSync()
         .whereType<File>()
         .where((File f) => f.basename.endsWith('.a'))) {
-      staticLib.deleteSync();
+      lib.deleteSync();
     }
 
     depfileService.writeToFile(
