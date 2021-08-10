@@ -21,6 +21,7 @@ import 'package:meta/meta.dart';
 import 'package:package_config/package_config.dart';
 import 'package:yaml/yaml.dart';
 
+import 'build_targets/utils.dart';
 import 'tizen_project.dart';
 
 /// Contains the parameters to template a Tizen plugin.
@@ -86,6 +87,7 @@ class TizenPlugin extends PluginPlatform implements NativeOrDartPlugin {
       if (pluginClass != null) 'class': pluginClass,
       if (dartPluginClass != null) 'dartPluginClass': dartPluginClass,
       'file': fileName,
+      'sofile': getLibNameFromFileName(fileName),
     };
   }
 
@@ -440,7 +442,7 @@ namespace Runner
     internal class GeneratedPluginRegistrant
     {
       {{#plugins}}
-        [DllImport("flutter_plugins.so")]
+        [DllImport("{{sofile}}.so")]
         public static extern void {{class}}RegisterWithRegistrar(
             FlutterDesktopPluginRegistrar registrar);
       {{/plugins}}

@@ -98,6 +98,7 @@ class NativePlugins extends Target {
     final File embedder =
         engineDir.childFile('libflutter_tizen_${buildInfo.deviceProfile}.so');
     inputs.add(embedder);
+    embedder.copySync(libDir.childFile(embedder.basename).path);
 
     final Directory commonDir = engineDir.parent.childDirectory('tizen-common');
     final Directory clientWrapperDir =
@@ -126,25 +127,29 @@ class NativePlugins extends Target {
       );
       copyDirectory(plugin.directory, pluginCopy.directory);
 
-      final List<String> properties = <String>[];
-      for (String line in plugin.projectFile.readAsLinesSync()) {
-        if (line.startsWith('type =')) {
-          line = 'type = staticLib';
-        } else if (line.startsWith('profile =')) {
-          line = 'profile = $profile-$apiVersion';
-        }
-        properties.add(line);
-      }
-      pluginCopy.projectFile.writeAsStringSync(properties.join('\n'));
-      inputs.add(plugin.projectFile);
+      // final List<String> properties = <String>[];
+      // for (String line in plugin.projectFile.readAsLinesSync()) {
+      //   if (line.startsWith('type =')) {
+      //     line = 'type = staticLib';
+      //   } else if (line.startsWith('profile =')) {
+      //     line = 'profile = $profile-$apiVersion';
+      //   }
+      //   properties.add(line);
+      // }
+      // pluginCopy.projectFile.writeAsStringSync(properties.join('\n'));
+      // inputs.add(plugin.projectFile);
 
       final Map<String, String> variables = <String, String>{
         'PATH': getDefaultPathVariable(),
       };
       final List<String> extraOptions = <String>[
+        '-lflutter_tizen_${buildInfo.deviceProfile}',
+        '-L"${engineDir.path.toPosixPath()}"',
+        //
         '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
         '-I"${publicDir.path.toPosixPath()}"',
         '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
+        // '-Wl,-unresolved-symbols=ignore-all',
       ];
 
       final RunResult result = await _processUtils.run(<String>[
@@ -171,7 +176,8 @@ class NativePlugins extends Target {
           getLibNameFromFileName(plugin.fileName.toLowerCase());
       final File libFile = pluginCopy.directory
           .childDirectory(buildConfig)
-          .childFile('lib$libName.a');
+          // .childFile('lib$libName.a');
+          .childFile('lib$libName.so');
       if (!libFile.existsSync()) {
         throwToolExit(
           'Build succeeded but the file ${libFile.path} is not found:\n'
@@ -257,45 +263,45 @@ USER_LIBS = ${userLibs.join(' ')}
     projectDef.copySync(tempDir.childFile(projectDef.basename).path);
 
     // Run the native build.
-    final RunResult result = await _processUtils.run(<String>[
-      tizenSdk.tizenCli.path,
-      'build-native',
-      '-a',
-      getTizenCliArch(buildInfo.targetArch),
-      '-C',
-      buildConfig,
-      '-c',
-      tizenSdk.defaultNativeCompiler,
-      '-r',
-      rootstrap.id,
-      '-e',
-      extraOptions.join(' '),
-      '--',
-      tempDir.path,
-    ], environment: variables);
-    if (result.exitCode != 0) {
-      throwToolExit('Failed to build native plugins:\n$result');
-    }
+    // final RunResult result = await _processUtils.run(<String>[
+    //   tizenSdk.tizenCli.path,
+    //   'build-native',
+    //   '-a',
+    //   getTizenCliArch(buildInfo.targetArch),
+    //   '-C',
+    //   buildConfig,
+    //   '-c',
+    //   tizenSdk.defaultNativeCompiler,
+    //   '-r',
+    //   rootstrap.id,
+    //   '-e',
+    //   extraOptions.join(' '),
+    //   '--',
+    //   tempDir.path,
+    // ], environment: variables);
+    // if (result.exitCode != 0) {
+    //   throwToolExit('Failed to build native plugins:\n$result');
+    // }
 
-    final File outputLib =
-        tempDir.childDirectory(buildConfig).childFile('libflutter_plugins.so');
-    if (!outputLib.existsSync()) {
-      throwToolExit(
-        'Build succeeded but the file ${outputLib.path} is not found:\n'
-        '${result.stdout}',
-      );
-    }
-    final File outputLibCopy =
-        outputLib.copySync(rootDir.childFile(outputLib.basename).path);
-    outputs.add(outputLibCopy);
+    // final File outputLib =
+    //     tempDir.childDirectory(buildConfig).childFile('libflutter_plugins.so');
+    // if (!outputLib.existsSync()) {
+    //   throwToolExit(
+    //     'Build succeeded but the file ${outputLib.path} is not found:\n'
+    //     '${result.stdout}',
+    //   );
+    // }
+    // final File outputLibCopy =
+    //     outputLib.copySync(rootDir.childFile(outputLib.basename).path);
+    // outputs.add(outputLibCopy);
 
-    // Remove intermediate files.
-    for (final File lib in libDir
-        .listSync()
-        .whereType<File>()
-        .where((File f) => f.basename.endsWith('.a'))) {
-      lib.deleteSync();
-    }
+    // // Remove intermediate files.
+    // for (final File lib in libDir
+    //     .listSync()
+    //     .whereType<File>()
+    //     .where((File f) => f.basename.endsWith('.a'))) {
+    //   lib.deleteSync();
+    // }
 
     depfileService.writeToFile(
       Depfile(inputs, outputs),

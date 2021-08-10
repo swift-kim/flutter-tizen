@@ -81,10 +81,10 @@ class DotnetTpk {
 
     final Directory pluginsDir =
         environment.buildDir.childDirectory('tizen_plugins');
-    final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
-    if (pluginsLib.existsSync()) {
-      pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
-    }
+    // final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
+    // if (pluginsLib.existsSync()) {
+    //   pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
+    // }
     final Directory pluginsUserLibDir = pluginsDir.childDirectory('lib');
     if (pluginsUserLibDir.existsSync()) {
       pluginsUserLibDir.listSync().whereType<File>().forEach(
