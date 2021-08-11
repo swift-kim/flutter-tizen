@@ -64,22 +64,6 @@ class NativePlugins extends Target {
         FlutterProject.fromDirectory(environment.projectDir);
     final TizenProject tizenProject = TizenProject.fromFlutter(project);
 
-    // Create a dummy project in the build directory.
-    final Directory rootDir = environment.buildDir
-        .childDirectory('tizen_plugins')
-          ..createSync(recursive: true);
-    final Directory includeDir = rootDir.childDirectory('include')
-      ..createSync(recursive: true);
-    final Directory libDir = rootDir.childDirectory('lib')
-      ..createSync(recursive: true);
-    final File projectDef = rootDir.childFile('project_def.prop');
-
-    final TizenManifest tizenManifest =
-        TizenManifest.parseFromXml(tizenProject.manifestFile);
-    final String profile = tizenManifest.profile;
-    final String apiVersion = tizenManifest.apiVersion;
-    inputs.add(tizenProject.manifestFile);
-
     // Check if there's anything to build.
     final List<TizenPlugin> nativePlugins =
         await findTizenPlugins(project, nativeOnly: true);
@@ -91,15 +75,21 @@ class NativePlugins extends Target {
       return;
     }
 
+    // Create a dummy project in the build directory.
+    final Directory rootDir = environment.buildDir
+        .childDirectory('tizen_plugins')
+          ..createSync(recursive: true);
+    final Directory includeDir = rootDir.childDirectory('include')
+      ..createSync(recursive: true);
+    final Directory libDir = rootDir.childDirectory('lib')
+      ..createSync(recursive: true);
+
     final BuildMode buildMode = buildInfo.buildInfo.mode;
     final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory engineDir =
         getEngineArtifactsDirectory(buildInfo.targetArch, buildMode);
-    final File embedder =
-        engineDir.childFile('libflutter_tizen_${buildInfo.deviceProfile}.so');
-    inputs.add(embedder);
-
     final Directory commonDir = engineDir.parent.childDirectory('tizen-common');
+
     final Directory clientWrapperDir =
         commonDir.childDirectory('cpp_client_wrapper');
     final Directory publicDir = commonDir.childDirectory('public');
@@ -110,11 +100,16 @@ class NativePlugins extends Target {
     publicDir.listSync(recursive: true).whereType<File>().forEach(inputs.add);
 
     assert(tizenSdk != null);
+    final TizenManifest tizenManifest =
+        TizenManifest.parseFromXml(tizenProject.manifestFile);
+    final String profile = tizenManifest.profile;
+    final String apiVersion = tizenManifest.apiVersion;
     final Rootstrap rootstrap = tizenSdk.getFlutterRootstrap(
       profile: profile,
       apiVersion: apiVersion,
       arch: buildInfo.targetArch,
     );
+    inputs.add(tizenProject.manifestFile);
 
     final List<String> userLibs = <String>[];
     final List<String> pluginClasses = <String>[];
@@ -130,8 +125,6 @@ class NativePlugins extends Target {
       for (String line in plugin.projectFile.readAsLinesSync()) {
         if (line.startsWith('type =')) {
           line = 'type = staticLib';
-        } else if (line.startsWith('profile =')) {
-          line = 'profile = $profile-$apiVersion';
         }
         properties.add(line);
       }
@@ -202,12 +195,11 @@ class NativePlugins extends Target {
           .childDirectory(getTizenBuildArch(buildInfo.targetArch));
       if (pluginLibDir.existsSync()) {
         pluginLibDir.listSync().whereType<File>().forEach((File lib) {
-          final File libCopy = libDir.childFile(lib.basename);
-          lib.copySync(libCopy.path);
+          lib.copySync(libDir.childFile(lib.basename).path);
           userLibs.add(getLibNameForFileName(lib.basename));
 
           inputs.add(lib);
-          outputs.add(libCopy);
+          outputs.add(libDir.childFile(lib.basename));
         });
       }
 
@@ -217,6 +209,7 @@ class NativePlugins extends Target {
       outputs.add(includeDir.childFile(header.basename));
     }
 
+    final File projectDef = rootDir.childFile('project_def.prop');
     projectDef.writeAsStringSync('''
 APPNAME = flutter_plugins
 type = sharedLib
@@ -227,11 +220,15 @@ USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
 USER_LIBS = ${userLibs.join(' ')}
 ''');
 
+    final File embedder =
+        engineDir.childFile('libflutter_tizen_${buildInfo.deviceProfile}.so');
+    inputs.add(embedder);
+
     final Map<String, String> variables = <String, String>{
       'PATH': getDefaultPathVariable(),
     };
     final List<String> extraOptions = <String>[
-      '-lflutter_tizen_${buildInfo.deviceProfile}',
+      '-l${getLibNameForFileName(embedder.basename)}',
       '-L"${engineDir.path.toPosixPath()}"',
       '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
       '-I"${publicDir.path.toPosixPath()}"',

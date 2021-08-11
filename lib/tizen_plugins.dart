@@ -90,37 +90,6 @@ class TizenPlugin extends PluginPlatform implements NativeOrDartPlugin {
   }
 
   File get projectFile => directory.childFile('project_def.prop');
-
-  final RegExp _propertyFormat = RegExp(r'(\S+)\s*\+?=(.*)');
-
-  List<String> getProperty(String key) {
-    if (!projectFile.existsSync()) {
-      return <String>[];
-    }
-    for (final String line in projectFile.readAsLinesSync()) {
-      final Match match = _propertyFormat.firstMatch(line);
-      if (match == null) {
-        continue;
-      }
-      if (match.group(1) == key) {
-        return match.group(2).trim().split(' ');
-      }
-    }
-    return <String>[];
-  }
-
-  List<String> getPropertyAsAbsolutePaths(String key) {
-    final List<String> paths = <String>[];
-    for (final String element in getProperty(key)) {
-      if (globals.fs.path.isAbsolute(element)) {
-        paths.add(element);
-      } else {
-        paths.add(globals.fs.path
-            .normalize(globals.fs.path.join(directory.path, element)));
-      }
-    }
-    return paths;
-  }
 }
 
 /// Any [FlutterCommand] that references [targetFile] should extend this mixin
