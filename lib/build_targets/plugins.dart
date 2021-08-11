@@ -116,6 +116,8 @@ class NativePlugins extends Target {
 
     for (final TizenPlugin plugin in nativePlugins) {
       // Create a copy of the plugin to modify its projectFile.
+      // This is also a workaround for the long path issue on Windows:
+      // https://github.com/flutter-tizen/flutter-tizen/issues/122
       final TizenPlugin pluginCopy = plugin.copyWith(
         directory: environment.fileSystem.systemTempDirectory.createTempSync(),
       );
@@ -241,13 +243,6 @@ USER_LIBS = ${userLibs.join(' ')}
         '-Wl,--undefined=${className}RegisterWithRegistrar',
     ];
 
-    // Create a temp directory to use as a build directory.
-    // This is a workaround for the long path issue on Windows:
-    // https://github.com/flutter-tizen/flutter-tizen/issues/122
-    final Directory tempDir =
-        environment.fileSystem.systemTempDirectory.createTempSync();
-    projectDef.copySync(tempDir.childFile(projectDef.basename).path);
-
     // Run the native build.
     final RunResult result = await _processUtils.run(<String>[
       tizenSdk.tizenCli.path,
@@ -263,23 +258,21 @@ USER_LIBS = ${userLibs.join(' ')}
       '-e',
       extraOptions.join(' '),
       '--',
-      tempDir.path,
+      rootDir.path,
     ], environment: variables);
     if (result.exitCode != 0) {
       throwToolExit('Failed to build native plugins:\n$result');
     }
 
     final File outputLib =
-        tempDir.childDirectory(buildConfig).childFile('libflutter_plugins.so');
+        rootDir.childDirectory(buildConfig).childFile('libflutter_plugins.so');
     if (!outputLib.existsSync()) {
       throwToolExit(
         'Build succeeded but the file ${outputLib.path} is not found:\n'
         '${result.stdout}',
       );
     }
-    final File outputLibCopy =
-        outputLib.copySync(rootDir.childFile(outputLib.basename).path);
-    outputs.add(outputLibCopy);
+    outputs.add(outputLib);
 
     // Remove intermediate files.
     for (final File lib in libDir
