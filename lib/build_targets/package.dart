@@ -79,12 +79,9 @@ class DotnetTpk {
       aotSharedLib.copySync(libDir.childFile('libapp.so').path);
     }
 
-    final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory pluginsDir =
         environment.buildDir.childDirectory('tizen_plugins');
-    final File pluginsLib = pluginsDir
-        .childDirectory(buildConfig)
-        .childFile('libflutter_plugins.so');
+    final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
     if (pluginsLib.existsSync()) {
       pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
     }
@@ -238,12 +235,9 @@ class NativeTpk {
       aotSharedLib.copySync(libDir.childFile('libapp.so').path);
     }
 
-    final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory pluginsDir =
         environment.buildDir.childDirectory('tizen_plugins');
-    final File pluginsLib = pluginsDir
-        .childDirectory(buildConfig)
-        .childFile('libflutter_plugins.so');
+    final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
     if (pluginsLib.existsSync()) {
       pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
     }
@@ -298,6 +292,7 @@ class NativeTpk {
       arch: buildInfo.targetArch,
     );
 
+    final String buildConfig = buildMode.isPrecompiled ? 'Release' : 'Debug';
     final Directory buildDir = tizenDir.childDirectory(buildConfig);
     if (buildDir.existsSync()) {
       buildDir.deleteSync(recursive: true);
