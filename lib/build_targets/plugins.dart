@@ -116,8 +116,8 @@ class NativePlugins extends Target {
       arch: buildInfo.targetArch,
     );
 
-    final List<String> libPaths = <String>[];
     final List<String> userLibs = <String>[];
+    final List<String> pluginClasses = <String>[];
 
     for (final TizenPlugin plugin in nativePlugins) {
       // Create a copy of the plugin to modify its projectFile.
@@ -142,6 +142,7 @@ class NativePlugins extends Target {
         'PATH': getDefaultPathVariable(),
       };
       final List<String> extraOptions = <String>[
+        '-fPIC',
         '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
         '-I"${publicDir.path.toPosixPath()}"',
         '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
@@ -168,7 +169,7 @@ class NativePlugins extends Target {
       }
 
       final String libName =
-          getLibNameFromFileName(plugin.fileName.toLowerCase());
+          getLibNameForFileName(plugin.fileName.toLowerCase());
       final File libFile = pluginCopy.directory
           .childDirectory(buildConfig)
           .childFile('lib$libName.a');
@@ -179,8 +180,8 @@ class NativePlugins extends Target {
         );
       }
       libFile.copySync(libDir.childFile(libFile.basename).path);
-      // libPaths.add(libFile.path);
       userLibs.add(libName);
+      pluginClasses.add(plugin.pluginClass);
 
       final Directory pluginIncludeDir = plugin.directory.childDirectory('inc');
       if (pluginIncludeDir.existsSync()) {
@@ -200,12 +201,10 @@ class NativePlugins extends Target {
           .childDirectory('lib')
           .childDirectory(getTizenBuildArch(buildInfo.targetArch));
       if (pluginLibDir.existsSync()) {
-        pluginLibDir.listSync().whereType<File>()
-            // .where((File f) => f.basename.endsWith('.so'))
-            .forEach((File lib) {
+        pluginLibDir.listSync().whereType<File>().forEach((File lib) {
           final File libCopy = libDir.childFile(lib.basename);
           lib.copySync(libCopy.path);
-          userLibs.add(getLibNameFromFileName(lib.basename));
+          userLibs.add(getLibNameForFileName(lib.basename));
 
           inputs.add(lib);
           outputs.add(libCopy);
@@ -224,11 +223,7 @@ type = sharedLib
 profile = $profile-$apiVersion
 
 USER_SRCS = ${clientWrapperDir.childFile('*.cc').path}
-
-USER_CPP_DEFS = TIZEN_DEPRECATION DEPRECATION_WARNING FLUTTER_PLUGIN_IMPL
-USER_CPPFLAGS_MISC = -c -fmessage-length=0
 USER_LFLAGS = -Wl,-rpath='\$\$ORIGIN'
-
 USER_LIBS = ${userLibs.join(' ')}
 ''');
 
@@ -236,17 +231,17 @@ USER_LIBS = ${userLibs.join(' ')}
       'PATH': getDefaultPathVariable(),
     };
     final List<String> extraOptions = <String>[
-      // '-fvisibility=hidden',
       '-lflutter_tizen_${buildInfo.deviceProfile}',
       '-L"${engineDir.path.toPosixPath()}"',
       '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
       '-I"${publicDir.path.toPosixPath()}"',
       '-L"${libDir.path.toPosixPath()}"',
-      // '-Wl,--whole-archive',
-      // ...libPaths,
-      // '-Wl,--no-whole-archive',
-      '-Wl,--undefined=StaticlibTestPluginRegisterWithRegistrar'
-      // '-Wl,--undefined=WebviewFlutterTizenPluginRegisterWithRegistrar',
+      // Force the plugin entrypoints to be exported, because unreferenced
+      // symbols are not included in the output shared object by default.
+      // Another option is to use the -Wl,--[no-]whole-archive flag with
+      // -Wl,-unresolved-symbols=ignore-in-object-files.
+      for (String className in pluginClasses)
+        '-Wl,--undefined=${className}RegisterWithRegistrar',
     ];
 
     // Create a temp directory to use as a build directory.

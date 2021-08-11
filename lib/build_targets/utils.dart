@@ -58,7 +58,7 @@ Directory getEngineArtifactsDirectory(String arch, BuildMode mode) {
 }
 
 /// Removes the "lib" prefix and file extension from [name] and returns.
-String getLibNameFromFileName(String name) {
+String getLibNameForFileName(String name) {
   if (name.startsWith('lib')) {
     name = name.substring(3);
   }
