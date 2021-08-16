@@ -252,7 +252,8 @@ class NativeTpk {
       buildDir.deleteSync(recursive: true);
     }
 
-    // Build the C++ embedding.
+    // We need to build the C++ embedding separately because the absolute path
+    // to the embedding directory may contain spaces.
     RunResult result = await tizenSdk.buildNative(
       embeddingDir.path,
       configuration: buildConfig,
@@ -266,6 +267,12 @@ class NativeTpk {
     if (result.exitCode != 0) {
       throwToolExit('Failed to build ${embeddingLib.basename}:\n$result');
     }
+    const List<String> embeddingDependencies = <String>[
+      'appcore-agent',
+      'capi-appfw-app-common',
+      'capi-appfw-application',
+      'dlog',
+    ];
 
     // Build the app.
     result = await tizenSdk.buildNative(
@@ -276,15 +283,16 @@ class NativeTpk {
         '${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
       ],
       extraOptions: <String>[
+        '-Wl,--unresolved-symbols=ignore-in-shared-libs',
         '-lflutter_tizen_${buildInfo.deviceProfile}',
         '-L${libDir.path.toPosixPath()}',
         '-I${clientWrapperDir.childDirectory('include').path.toPosixPath()}',
         '-I${publicDir.path.toPosixPath()}',
         '-I${embeddingDir.childDirectory('include').path.toPosixPath()}',
-        '-Wl,--unresolved-symbols=ignore-all',
         '-Wl,--whole-archive',
         embeddingLib.path.toPosixPath(),
         '-Wl,--no-whole-archive',
+        for (String lib in embeddingDependencies) '-l$lib',
         '-I${pluginsDir.childDirectory('include').path.toPosixPath()}',
         if (pluginsLib.existsSync()) '-lflutter_plugins',
       ],

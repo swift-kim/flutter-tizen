@@ -226,8 +226,8 @@ class NativePlugins extends Target {
       outputs.add(includeDir.childFile(header.basename));
     }
 
-    // The path to clientWrapperDir may contain spaces.
-    // We need to copy the entire directory into the build directory since
+    // The absolute path to clientWrapperDir may contain spaces.
+    // We need to copy the entire directory into the build directory because
     // USER_SRCS in project_def.prop doesn't allow spaces.
     copyDirectory(
       clientWrapperDir,
@@ -270,8 +270,7 @@ USER_LIBS = ${userLibs.join(' ')}
         '-L${libDir.path.toPosixPath()}',
         // Forces plugin entrypoints to be exported, because unreferenced
         // objects are not included in the output shared object by default.
-        // Another option is to use the -Wl,--[no-]whole-archive flag with
-        // -Wl,--unresolved-symbols=ignore-in-object-files.
+        // Another option is to use the -Wl,--[no-]whole-archive flag.
         for (String className in pluginClasses)
           '-Wl,--undefined=${className}RegisterWithRegistrar',
       ],
