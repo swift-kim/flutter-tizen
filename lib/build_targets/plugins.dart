@@ -153,13 +153,10 @@ class NativePlugins extends Target {
         ],
         extraOptions: <String>[
           '-fPIC',
-          '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
-          '-I"${publicDir.path.toPosixPath()}"',
+          '-I${clientWrapperDir.childDirectory('include').path.toPosixPath()}',
+          '-I${publicDir.path.toPosixPath()}',
         ],
         rootstrap: rootstrap.id,
-        environment: <String, String>{
-          'PATH': getDefaultPathVariable(),
-        },
       );
       if (result.exitCode != 0) {
         throwToolExit('Failed to build ${plugin.name} plugin:\n$result');
@@ -230,10 +227,12 @@ class NativePlugins extends Target {
     }
 
     // The path to clientWrapperDir may contain spaces.
-    // USER_SRCS in project_def.prop doesn't allow spaces, so the entire
-    // directory should be copied into the build directory.
+    // We need to copy the entire directory into the build directory since
+    // USER_SRCS in project_def.prop doesn't allow spaces.
     copyDirectory(
-        clientWrapperDir, rootDir.childDirectory(clientWrapperDir.basename));
+      clientWrapperDir,
+      rootDir.childDirectory(clientWrapperDir.basename),
+    );
 
     final File projectDef = rootDir.childFile('project_def.prop');
     projectDef.writeAsStringSync('''
@@ -266,20 +265,17 @@ USER_LIBS = ${userLibs.join(' ')}
       arch: getTizenCliArch(buildInfo.targetArch),
       extraOptions: <String>[
         '-l${getLibNameForFileName(embedder.basename)}',
-        '-L"${engineDir.path.toPosixPath()}"',
-        '-I"${publicDir.path.toPosixPath()}"',
-        '-L"${libDir.path.toPosixPath()}"',
+        '-L${engineDir.path.toPosixPath()}',
+        '-I${publicDir.path.toPosixPath()}',
+        '-L${libDir.path.toPosixPath()}',
         // Forces plugin entrypoints to be exported, because unreferenced
         // objects are not included in the output shared object by default.
         // Another option is to use the -Wl,--[no-]whole-archive flag with
-        // -Wl,-unresolved-symbols=ignore-in-object-files.
+        // -Wl,--unresolved-symbols=ignore-in-object-files.
         for (String className in pluginClasses)
           '-Wl,--undefined=${className}RegisterWithRegistrar',
       ],
       rootstrap: rootstrap.id,
-      environment: <String, String>{
-        'PATH': getDefaultPathVariable(),
-      },
     );
     if (result.exitCode != 0) {
       throwToolExit('Failed to build native plugins:\n$result');
