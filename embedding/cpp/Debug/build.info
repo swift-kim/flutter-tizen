@@ -1,0 +1,8 @@
+#Build information
+#Tue Aug 17 15:28:03 KST 2021
+project-path=/home/swift/Git/flutter-tizen/embedding/cpp
+toolchain=LLVM-10.0
+architecture=i586
+config=Debug
+type=staticLib
+profile=flutter

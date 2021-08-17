@@ -11,10 +11,13 @@ import 'package:flutter_tools/executable.dart' as flutter;
 import 'package:flutter_tools/runner.dart' as runner;
 import 'package:flutter_tools/src/application_package.dart';
 import 'package:flutter_tools/src/base/context.dart';
+import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/logger.dart';
 import 'package:flutter_tools/src/base/template.dart';
+import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/commands/config.dart';
+import 'package:flutter_tools/src/commands/daemon.dart';
 import 'package:flutter_tools/src/commands/devices.dart';
 import 'package:flutter_tools/src/commands/doctor.dart';
 import 'package:flutter_tools/src/commands/emulators.dart';
@@ -33,6 +36,7 @@ import 'package:flutter_tools/src/features.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/isolated/mustache_template.dart';
 import 'package:flutter_tools/src/runner/flutter_command.dart';
+import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 
 import 'commands/analyze.dart';
@@ -68,6 +72,10 @@ Future<void> main(List<String> args) async {
       (args.length == 1 && verbose);
   final bool muteCommandLogging = (help || doctor) && !veryVerbose;
   final bool verboseHelp = help && verbose;
+  final bool daemon = args.contains('daemon');
+  final bool runMachine =
+      (args.contains('--machine') && args.contains('run')) ||
+          (args.contains('--machine') && args.contains('attach'));
 
   final bool hasSpecifiedDeviceId =
       args.contains('-d') || args.contains('--device-id');
@@ -86,6 +94,7 @@ Future<void> main(List<String> args) async {
     () => <FlutterCommand>[
       // Commands directly from flutter_tools.
       ConfigCommand(verboseHelp: verboseHelp),
+      DaemonCommand(hidden: !verboseHelp),
       DevicesCommand(verboseHelp: verboseHelp),
       DoctorCommand(verbose: verbose),
       EmulatorsCommand(),
@@ -182,13 +191,19 @@ Future<void> main(List<String> args) async {
             botDetector: globals.botDetector,
             usage: globals.flutterUsage,
           ),
-      if (verbose && !muteCommandLogging)
-        Logger: () => VerboseLogger(StdoutLogger(
-              stdio: globals.stdio,
-              terminal: globals.terminal,
-              outputPreferences: globals.outputPreferences,
-              stopwatchFactory: const StopwatchFactory(),
-            )),
+      Logger: () {
+        final LoggerFactory loggerFactory = LoggerFactory(
+          outputPreferences: globals.outputPreferences,
+          terminal: globals.terminal,
+          stdio: globals.stdio,
+        );
+        return loggerFactory.createLogger(
+          daemon: daemon,
+          machine: runMachine,
+          verbose: verbose && !muteCommandLogging,
+          windows: globals.platform.isWindows,
+        );
+      },
     },
   );
 }
@@ -200,4 +215,58 @@ String get rootPath {
     scriptPath,
     scriptPath.endsWith('.snapshot') ? '../../..' : '../..',
   ));
+}
+
+/// An abstraction for instantiation of the correct logger type.
+///
+/// Our logger class hierarchy and runtime requirements are overly complicated.
+class LoggerFactory {
+  LoggerFactory({
+    @required Terminal terminal,
+    @required Stdio stdio,
+    @required OutputPreferences outputPreferences,
+    StopwatchFactory stopwatchFactory = const StopwatchFactory(),
+  })  : _terminal = terminal,
+        _stdio = stdio,
+        _stopwatchFactory = stopwatchFactory,
+        _outputPreferences = outputPreferences;
+
+  final Terminal _terminal;
+  final Stdio _stdio;
+  final StopwatchFactory _stopwatchFactory;
+  final OutputPreferences _outputPreferences;
+
+  /// Create the appropriate logger for the current platform and configuration.
+  Logger createLogger({
+    @required bool daemon,
+    @required bool machine,
+    @required bool verbose,
+    @required bool windows,
+  }) {
+    Logger logger;
+    if (windows) {
+      logger = WindowsStdoutLogger(
+        terminal: _terminal,
+        stdio: _stdio,
+        outputPreferences: _outputPreferences,
+        stopwatchFactory: _stopwatchFactory,
+      );
+    } else {
+      logger = StdoutLogger(
+          terminal: _terminal,
+          stdio: _stdio,
+          outputPreferences: _outputPreferences,
+          stopwatchFactory: _stopwatchFactory);
+    }
+    if (verbose) {
+      logger = VerboseLogger(logger, stopwatchFactory: _stopwatchFactory);
+    }
+    if (daemon) {
+      return NotifyingLogger(verbose: verbose, parent: logger);
+    }
+    if (machine) {
+      return AppRunLogger(parent: logger);
+    }
+    return logger;
+  }
 }
