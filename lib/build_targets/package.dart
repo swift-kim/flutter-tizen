@@ -237,6 +237,13 @@ class NativeTpk {
         .childDirectory('embedding')
         .childDirectory('cpp');
 
+    final List<String> userIncludes = <String>[
+      clientWrapperDir.childDirectory('include').path,
+      publicDir.path,
+      embeddingDir.childDirectory('include').path,
+      pluginsDir.childDirectory('include').path,
+    ];
+
     assert(tizenSdk != null);
     final TizenManifest tizenManifest =
         TizenManifest.parseFromXml(tizenProject.manifestFile);
@@ -252,30 +259,8 @@ class NativeTpk {
       buildDir.deleteSync(recursive: true);
     }
 
-    // We need to build the C++ embedding separately because the absolute path
-    // to the embedding directory may contain spaces.
+    // Run the native build.
     RunResult result = await tizenSdk.buildNative(
-      embeddingDir.path,
-      configuration: buildConfig,
-      arch: getTizenCliArch(buildInfo.targetArch),
-      extraOptions: <String>['-fPIC'],
-      rootstrap: rootstrap.id,
-    );
-    final File embeddingLib = embeddingDir
-        .childDirectory(buildConfig)
-        .childFile('libembedding_cpp.a');
-    if (result.exitCode != 0) {
-      throwToolExit('Failed to build ${embeddingLib.basename}:\n$result');
-    }
-    const List<String> embeddingDependencies = <String>[
-      'appcore-agent',
-      'capi-appfw-app-common',
-      'capi-appfw-application',
-      'dlog',
-    ];
-
-    // Build the app.
-    result = await tizenSdk.buildNative(
       tizenDir.path,
       configuration: buildConfig,
       arch: getTizenCliArch(buildInfo.targetArch),
@@ -286,17 +271,14 @@ class NativeTpk {
         '-Wl,--unresolved-symbols=ignore-in-shared-libs',
         '-lflutter_tizen_${buildInfo.deviceProfile}',
         '-L${libDir.path.toPosixPath()}',
-        '-I${clientWrapperDir.childDirectory('include').path.toPosixPath()}',
-        '-I${publicDir.path.toPosixPath()}',
-        '-I${embeddingDir.childDirectory('include').path.toPosixPath()}',
-        '-Wl,--whole-archive',
-        embeddingLib.path.toPosixPath(),
-        '-Wl,--no-whole-archive',
-        for (String lib in embeddingDependencies) '-l$lib',
-        '-I${pluginsDir.childDirectory('include').path.toPosixPath()}',
+        ...userIncludes.map((String f) => '-I${f.toPosixPath()}'),
         if (pluginsLib.existsSync()) '-lflutter_plugins',
       ],
       rootstrap: rootstrap.id,
+      userSources: <String>[
+        clientWrapperDir.childFile('*.cc').path.toPosixPath(),
+        embeddingDir.childFile('*.cc').path.toPosixPath(),
+      ],
     );
     if (result.exitCode != 0) {
       throwToolExit('Failed to build native application:\n$result');

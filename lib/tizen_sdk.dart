@@ -137,6 +137,16 @@ class TizenSdk {
     return path;
   }
 
+  String _escapePaths(List<String> paths) {
+    final List<String> escaped = <String>[];
+    for (final String path in paths) {
+      escaped.add(path.replaceAll('"', r'\"').replaceAll(' ', r'\ '));
+    }
+
+    globals.printStatus(escaped.join(' '));
+    return escaped.join(' ');
+  }
+
   Future<RunResult> buildNative(
     String workingDirectory, {
     @required String configuration,
@@ -145,9 +155,12 @@ class TizenSdk {
     List<String> predefines = const <String>[],
     List<String> extraOptions = const <String>[],
     String rootstrap,
+    List<String> userSources = const <String>[],
   }) async {
     assert(configuration != null);
     assert(arch != null);
+
+    globals.printStatus(userSources.toString());
 
     return _processUtils.run(
       <String>[
@@ -167,6 +180,7 @@ class TizenSdk {
       ],
       environment: <String, String>{
         'PATH': _getPathVariable(),
+        'USER_SRCS': _escapePaths(userSources),
       },
     );
   }
