@@ -155,6 +155,22 @@ class TizenSdk {
     );
   }
 
+  Future<RunResult> package(
+    String workingDirectory, {
+    String type = 'tpk',
+    String sign,
+  }) {
+    return _processUtils.run(<String>[
+      tizenCli.path,
+      'package',
+      '-t',
+      type,
+      if (sign != null) ...<String>['-s', sign],
+      '--',
+      workingDirectory,
+    ]);
+  }
+
   Rootstrap getFlutterRootstrap({
     @required String profile,
     @required String apiVersion,

@@ -306,15 +306,7 @@ class NativeTpk {
       environment.logger
           .printStatus('The $securityProfile profile is used for signing.');
     }
-    result = await _processUtils.run(<String>[
-      tizenSdk.tizenCli.path,
-      'package',
-      '-t',
-      'tpk',
-      if (securityProfile != null) ...<String>['-s', securityProfile],
-      '--',
-      buildDir.path,
-    ]);
+    result = await tizenSdk.package(buildDir.path, sign: securityProfile);
     if (result.exitCode != 0) {
       throwToolExit('Failed to generate TPK:\n$result');
     }
