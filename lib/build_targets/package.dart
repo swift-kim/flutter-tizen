@@ -247,20 +247,13 @@ class NativeTpk {
       clientWrapperDir.childFile('*.cc').path,
       embeddingDir.childFile('*.cc').path,
     ];
-
-    final Map<String, String> variables = <String, String>{
-      'PATH': getDefaultPathVariable(),
-      'USER_SRCS': userSources.map((String f) => f.toPosixPath()).join(' '),
-    };
     final List<String> extraOptions = <String>[
       '-lflutter_tizen_${buildInfo.deviceProfile}',
       '-L"${libDir.path.toPosixPath()}"',
-      '-std=c++17',
       '-I"${clientWrapperDir.childDirectory('include').path.toPosixPath()}"',
       '-I"${publicDir.path.toPosixPath()}"',
       ...userIncludes.map((String f) => '-I"${f.toPosixPath()}"'),
       if (pluginsLib.existsSync()) '-lflutter_plugins',
-      '-D${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
       '-Wl,-unresolved-symbols=ignore-in-shared-libs',
     ];
 
@@ -279,6 +272,25 @@ class NativeTpk {
       buildDir.deleteSync(recursive: true);
     }
 
+    // Run the native build.
+    RunResult result = await tizenSdk.buildNative(
+      tizenDir.path,
+      configuration: buildConfig,
+      arch: getTizenCliArch(buildInfo.targetArch),
+      predefines: <String>[
+        '${buildInfo.deviceProfile.toUpperCase()}_PROFILE',
+      ],
+      extraOptions: extraOptions,
+      rootstrap: rootstrap.id,
+      environment: <String, String>{
+        'PATH': getDefaultPathVariable(),
+        'USER_SRCS': userSources.map((String f) => f.toPosixPath()).join(' '),
+      },
+    );
+    if (result.exitCode != 0) {
+      throwToolExit('Failed to build native application:\n$result');
+    }
+
     // The output TPK is signed with an active profile unless otherwise
     // specified.
     String securityProfile = buildInfo.securityProfile;
@@ -294,34 +306,15 @@ class NativeTpk {
       environment.logger
           .printStatus('The $securityProfile profile is used for signing.');
     }
-
-    // Run the native build
-    final String method =
-        "name: \"m1\", compiler:\"${tizenSdk.defaultNativeCompiler}\", extraoption: \"${extraOptions.join(' ').replaceAll('"', r'\"')}\", configs:[\"$buildConfig\"], rootstraps:[{name:\"${rootstrap.id}\", arch:\"${getTizenCliArch(buildInfo.targetArch)}\"}]";
-    final List<String> targets =
-        tizenProject.isMultiApp ? <String>['ui', 'service'] : <String>['.'];
-
-    final String build =
-        'name: "b1", methods: ["m1"], targets: ["${targets.join('","')}"]';
-    final String package = 'name: "${tizenManifest.packageId}", targets:["b1"]';
-
-    final List<String> buildAppCommand = <String>[
+    result = await _processUtils.run(<String>[
       tizenSdk.tizenCli.path,
-      'build-app',
-      '-m',
-      method,
-      '-b',
-      build,
-      '-p',
-      package,
+      'package',
+      '-t',
+      'tpk',
       if (securityProfile != null) ...<String>['-s', securityProfile],
-      '-o',
-      buildDir.path,
       '--',
-      tizenDir.path,
-    ];
-    final RunResult result =
-        await _processUtils.run(buildAppCommand, environment: variables);
+      buildDir.path,
+    ]);
     if (result.exitCode != 0) {
       throwToolExit('Failed to generate TPK:\n$result');
     }
@@ -334,15 +327,12 @@ class NativeTpk {
       );
     }
 
-    // TODO(pkosko): find better way to determine file name
-    File outputTpk;
-    for (final File file in buildDir.listSync().whereType<File>()) {
-      if (file.basename.endsWith('.tpk')) {
-        outputTpk = file;
-        break;
-      }
-    }
-    if (outputTpk == null || !outputTpk.existsSync()) {
+    final String tpkArch = buildInfo.targetArch
+        .replaceFirst('arm64', 'aarch64')
+        .replaceFirst('x86', 'i586');
+    final File outputTpk = buildDir.childFile(
+        tizenProject.outputTpkName.replaceFirst('.tpk', '-$tpkArch.tpk'));
+    if (!outputTpk.existsSync()) {
       throwToolExit('Build succeeded but the expected TPK not found:\n$result');
     }
     // Copy and rename the output TPK.
