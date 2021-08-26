@@ -158,6 +158,7 @@ class TizenSdk {
   Future<RunResult> package(
     String workingDirectory, {
     String type = 'tpk',
+    String reference,
     String sign,
   }) {
     return _processUtils.run(<String>[
@@ -166,6 +167,7 @@ class TizenSdk {
       '-t',
       type,
       if (sign != null) ...<String>['-s', sign],
+      if (reference != null) ...<String>['-r', reference],
       '--',
       workingDirectory,
     ]);
