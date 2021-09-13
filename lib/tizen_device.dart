@@ -473,9 +473,10 @@ class TizenDevice extends Device {
     try {
       final List<String> command = usesSecureProtocol
           ? <String>['shell', '0', 'kill', app.applicationId]
-          : <String>['shell', 'app_launcher', '-k', app.applicationId];
+          : <String>['shell', 'app_launcher', '-t', app.applicationId];
       final String stdout = (await runSdbAsync(command)).stdout;
-      return stdout.contains('Kill appId') || stdout.contains('is Terminated');
+      return stdout.contains('Terminate appId') ||
+          stdout.contains('is Terminated');
     } on Exception catch (error) {
       _logger.printError(error.toString());
       return false;
