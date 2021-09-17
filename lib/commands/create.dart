@@ -53,11 +53,14 @@ class TizenCreateCommand extends CreateCommand {
       return super.runCommand();
     }
 
-    // Check if the main.dart file exists before running super.runCommand().
+    // Check if main.dart/pubspec.yaml exists before running super.runCommand().
     final File mainFile =
         projectDir.childDirectory('lib').childFile('main.dart');
+    final File pubspecFile = projectDir.childFile('pubspec.yaml');
     final bool overwriteMainFile =
         boolArg('overwrite') || !mainFile.existsSync();
+    final bool overwritePubspecFile =
+        boolArg('overwrite') || !pubspecFile.existsSync();
 
     final FlutterCommandResult result = await super.runCommand();
     if (result != FlutterCommandResult.success()) {
@@ -67,29 +70,25 @@ class TizenCreateCommand extends CreateCommand {
     final bool generatePlugin = argResults['template'] != null
         ? stringArg('template') == 'plugin'
         : determineTemplateType() == FlutterProjectType.plugin;
-    if (generatePlugin) {
-      // Assume that pubspec.yaml uses the multi-platforms plugin format if the
-      // file already exists.
-      // TODO(swift-kim): Skip this message if tizen already exists in pubspec.
-      globals.printStatus(
-        'The `pubspec.yaml` under the project directory must be updated to support Tizen.\n'
-        'Add below lines to under the `platforms:` key.',
-        emphasis: true,
-        color: TerminalColor.yellow,
-      );
+    if (generatePlugin && overwritePubspecFile) {
       final Map<String, dynamic> templateContext = createTemplateContext(
         organization: '',
         projectName: projectName,
         flutterRoot: '',
       );
-      globals.printStatus(
-        '\ntizen:\n'
-        '  pluginClass: ${templateContext['pluginClass'] as String}\n'
-        '  fileName: ${projectName}_plugin.h',
-        emphasis: true,
-        color: TerminalColor.blue,
+      final List<String> pubspec = pubspecFile.readAsLinesSync();
+      pubspec.insert(
+        pubspec.indexWhere((String line) => line.endsWith('platforms:')) + 1,
+        '      tizen:\n'
+        '        pluginClass: ${templateContext['pluginClass'] as String}\n'
+        '        fileName: ${projectName}_plugin.h',
       );
-      globals.printStatus('');
+      final int somePlatformIndex =
+          pubspec.indexWhere((String line) => line.endsWith('some_platform:'));
+      if (somePlatformIndex > 0) {
+        pubspec.removeRange(somePlatformIndex - 5, somePlatformIndex + 3);
+      }
+      pubspecFile.writeAsStringSync(pubspec.join('\n') + '\n');
     }
 
     // TODO(pkosko): Find better solution for inject a multi-project main.dart file

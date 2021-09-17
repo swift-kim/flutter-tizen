@@ -43,12 +43,9 @@ Otherwise, follow the `lowercase_with_underscores` style convention to name your
 flutter-tizen create --template plugin plugin_name
 ```
 
-Once the package is created, you will be prompted to add some information to its pubspec file. Open the main `plugin_name/` directory in VS Code, locate the `pubspec.yaml` file, and replace the `some_platform:` map with `tizen:` as suggested by the tool. This information is needed by the flutter-tizen tool to find and register the plugin when building an app that depends on the plugin.
+Once the package is created, open the main `plugin_name/` directory in VS Code. Then, open the `pubspec.yaml` file and make sure the following lines were added to under the `platforms:` key. This information is needed by the flutter-tizen tool to find and register this plugin when building an app that depends on the plugin.
 
 ```yaml
-The `pubspec.yaml` under the project directory must be updated to support Tizen.
-Add below lines to under the `platforms:` key.
-
 tizen:
   pluginClass: PluginNamePlugin
   fileName: plugin_name_plugin.h
