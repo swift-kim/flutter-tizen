@@ -53,11 +53,14 @@ class TizenCreateCommand extends CreateCommand {
       return super.runCommand();
     }
 
-    // Check if the main.dart file exists before running super.runCommand().
+    // Check if main.dart/pubspec.yaml exists before running super.runCommand().
     final File mainFile =
         projectDir.childDirectory('lib').childFile('main.dart');
+    final File pubspecFile = projectDir.childFile('pubspec.yaml');
     final bool overwriteMainFile =
         boolArg('overwrite') || !mainFile.existsSync();
+    final bool overwritePubspecFile =
+        boolArg('overwrite') || !pubspecFile.existsSync();
 
     final FlutterCommandResult result = await super.runCommand();
     if (result != FlutterCommandResult.success()) {
@@ -96,10 +99,16 @@ class TizenCreateCommand extends CreateCommand {
     if (stringArg('app-type') == 'multi') {
       final File createdMainFile =
           projectDir.childDirectory('tizen').childFile('main.dart');
+      final File createdPubspecFile =
+          projectDir.childDirectory('tizen').childFile('pubspec.yaml');
       if (overwriteMainFile) {
         createdMainFile.copySync(mainFile.path);
       }
+      if (overwritePubspecFile) {
+        createdPubspecFile.copySync(pubspecFile.path);
+      }
       createdMainFile.deleteSync();
+      createdPubspecFile.deleteSync();
     }
 
     return result;
