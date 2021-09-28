@@ -5,6 +5,9 @@
 
 // @dart = 2.8
 
+// TODO(swift-kim): Remove after null-safety migration.
+// ignore_for_file: avoid_dynamic_calls
+
 import 'package:analyzer/dart/analysis/analysis_context.dart';
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
@@ -12,7 +15,6 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:file/file.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/terminal.dart';
-import 'package:flutter_tools/src/build_system/targets/web.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/dart/language_version.dart';
 import 'package:flutter_tools/src/dart/package_map.dart';
@@ -153,8 +155,6 @@ List<String> _findDartEntrypoints(File dartFile) {
 
 /// Creates an entrypoint wrapper of [targetFile] and returns its path.
 /// This effectively adds support for Dart plugins.
-///
-/// Source: [WebEntrypointTarget.build] in `web.dart`
 Future<String> _createEntrypoint(
     FlutterProject project, String targetFile) async {
   final List<TizenPlugin> dartPlugins =
@@ -319,7 +319,7 @@ Future<List<TizenPlugin>> findTizenPlugins(
   return plugins;
 }
 
-/// Source: [_pluginFromPackage] in `plugins.dart`
+/// Source: [_pluginFromPackage] in `flutter_plugins.dart`
 TizenPlugin _pluginFromPackage(String name, Uri packageRoot) {
   final String pubspecPath =
       globals.fs.path.fromUri(packageRoot.resolve('pubspec.yaml'));
