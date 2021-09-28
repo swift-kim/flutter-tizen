@@ -80,7 +80,6 @@ Future<void> buildTpk({
   final Directory outputDir =
       project.directory.childDirectory('build').childDirectory('tizen');
   final BuildInfo buildInfo = tizenBuildInfo.buildInfo;
-  final String buildModeName = getNameForBuildMode(buildInfo.mode);
   // Used by AotElfBase to generate an AOT snapshot.
   final String targetPlatform = getNameForTargetPlatform(
       _getTargetPlatformForArch(tizenBuildInfo.targetArch));
@@ -94,23 +93,9 @@ Future<void> buildTpk({
     engineVersion: globals.flutterVersion.engineRevision,
     defines: <String, String>{
       kTargetFile: targetFile,
-      kBuildMode: buildModeName,
       kTargetPlatform: targetPlatform,
-      kDartObfuscation: buildInfo.dartObfuscation.toString(),
-      kSplitDebugInfo: buildInfo.splitDebugInfoPath,
-      kIconTreeShakerFlag: buildInfo.treeShakeIcons.toString(),
-      kTrackWidgetCreation: buildInfo.trackWidgetCreation.toString(),
-      kCodeSizeDirectory: buildInfo.codeSizeDirectory,
-      if (buildInfo.dartDefines?.isNotEmpty ?? false)
-        kDartDefines: encodeDartDefines(buildInfo.dartDefines),
-      if (buildInfo.extraGenSnapshotOptions?.isNotEmpty ?? false)
-        kExtraGenSnapshotOptions: buildInfo.extraGenSnapshotOptions.join(','),
-      if (buildInfo.extraFrontEndOptions?.isNotEmpty ?? false)
-        kExtraFrontEndOptions: buildInfo.extraFrontEndOptions.join(','),
       kDeviceProfile: tizenBuildInfo.deviceProfile,
-    },
-    inputs: <String, String>{
-      kBundleSkSLPath: buildInfo.bundleSkSLPath,
+      ...buildInfo.toBuildSystemEnvironment(),
     },
     artifacts: globals.artifacts,
     fileSystem: globals.fs,
@@ -124,6 +109,7 @@ Future<void> buildTpk({
       ? DebugTizenApplication(tizenBuildInfo)
       : ReleaseTizenApplication(tizenBuildInfo);
 
+  final String buildModeName = getNameForBuildMode(buildInfo.mode);
   final Status status = globals.logger
       .startProgress('Building a Tizen application in $buildModeName mode...');
   try {
