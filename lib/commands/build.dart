@@ -89,7 +89,7 @@ class BuildTpkCommand extends BuildSubCommand
     _validateBuild(tizenBuildInfo);
     displayNullSafetyMode(buildInfo);
 
-    await TizenBuilder.buildTpk(
+    await buildTpk(
       project: FlutterProject.current(),
       targetFile: targetFile,
       tizenBuildInfo: tizenBuildInfo,

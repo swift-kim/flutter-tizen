@@ -326,7 +326,7 @@ class TizenDevice extends Device {
     if (!prebuiltApplication) {
       _logger.printTrace('Building TPK');
       final FlutterProject project = FlutterProject.current();
-      await TizenBuilder.buildTpk(
+      await buildTpk(
         project: project,
         targetFile: mainPath,
         tizenBuildInfo: TizenBuildInfo(
