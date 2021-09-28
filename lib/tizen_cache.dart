@@ -154,10 +154,11 @@ class TizenEngineArtifacts extends EngineCachedArtifact {
 
     final http.Response response = await http.get(Uri.parse(azureRestUrl));
     if (response.statusCode == 200) {
-      return json
-          .decode(response.body)['resource']['downloadUrl']
-          .toString()
-          .replaceAll(
+      final Map<Object, Object> decoded =
+          json.decode(response.body) as Map<Object, Object>;
+      final Map<Object, Object> resource =
+          decoded['resource'] as Map<Object, Object>;
+      return resource['downloadUrl'].toString().replaceAll(
             'content?format=zip',
             'content?format=file&subPath=',
           );
