@@ -38,9 +38,6 @@ class TizenProject extends FlutterProjectPlatform {
   Directory get ephemeralDirectory =>
       managedDirectory.childDirectory('ephemeral');
 
-  bool get isDotnet =>
-      editableDirectory.childFile('Runner.csproj').existsSync();
-
   bool get isMultiApp =>
       uiAppDirectory.existsSync() && serviceAppDirectory.existsSync();
 
@@ -60,6 +57,10 @@ class TizenProject extends FlutterProjectPlatform {
   bool existsSync() => isMultiApp
       ? uiManifestFile.existsSync() && serviceManifestFile.existsSync()
       : manifestFile.existsSync();
+
+  bool get isDotnet => isMultiApp
+      ? uiAppDirectory.childFile('Runner.csproj').existsSync()
+      : editableDirectory.childFile('Runner.csproj').existsSync();
 
   String get outputTpkName {
     final TizenManifest manifest = TizenManifest.parseFromXml(manifestFile);

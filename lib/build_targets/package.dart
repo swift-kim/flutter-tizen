@@ -33,87 +33,123 @@ class DotnetTpk {
         FlutterProject.fromDirectory(environment.projectDir);
     final TizenProject tizenProject = TizenProject.fromFlutter(project);
 
-    // Clean up the intermediate and output directories.
-    final Directory ephemeralDir = tizenProject.ephemeralDirectory;
-    if (ephemeralDir.existsSync()) {
-      ephemeralDir.deleteSync(recursive: true);
-    }
-    final Directory resDir = ephemeralDir.childDirectory('res')
-      ..createSync(recursive: true);
-    final Directory libDir = ephemeralDir.childDirectory('lib')
-      ..createSync(recursive: true);
+    final List<Directory> projectDirs = tizenProject.isMultiApp
+        ? <Directory>[
+            tizenProject.uiAppDirectory,
+            tizenProject.serviceAppDirectory,
+          ]
+        : <Directory>[tizenProject.editableDirectory];
 
-    final Directory outputDir = environment.outputDir.childDirectory('tpk');
-    if (outputDir.existsSync()) {
-      outputDir.deleteSync(recursive: true);
-    }
-    outputDir.createSync(recursive: true);
+    for (final Directory projectDir in projectDirs) {
+      // Clean up the intermediate and output directories.
+      final Directory ephemeralDir = tizenProject.ephemeralDirectory;
+      if (ephemeralDir.existsSync()) {
+        ephemeralDir.deleteSync(recursive: true);
+      }
+      final Directory resDir = ephemeralDir.childDirectory('res')
+        ..createSync(recursive: true);
+      final Directory libDir = ephemeralDir.childDirectory('lib')
+        ..createSync(recursive: true);
 
-    // Copy necessary files.
-    final Directory flutterAssetsDir = resDir.childDirectory('flutter_assets');
-    copyDirectory(
-      environment.outputDir.childDirectory('flutter_assets'),
-      flutterAssetsDir,
-    );
+      Directory outputDir = environment.outputDir.childDirectory('tpk');
+      if (tizenProject.isMultiApp) {
+        outputDir = outputDir.childDirectory(projectDir.basename);
+      }
+      if (outputDir.existsSync()) {
+        outputDir.deleteSync(recursive: true);
+      }
+      outputDir.createSync(recursive: true);
 
-    final BuildMode buildMode = buildInfo.buildInfo.mode;
-    final Directory engineDir =
-        getEngineArtifactsDirectory(buildInfo.targetArch, buildMode);
-    final Directory commonDir = engineDir.parent.childDirectory('tizen-common');
-
-    final File engineBinary = engineDir.childFile('libflutter_engine.so');
-    final File embedder =
-        engineDir.childFile('libflutter_tizen_${buildInfo.deviceProfile}.so');
-    final File icuData =
-        commonDir.childDirectory('icu').childFile('icudtl.dat');
-
-    engineBinary.copySync(libDir.childFile(engineBinary.basename).path);
-    // The embedder so name is statically defined in C# code and cannot be
-    // provided at runtime, so the file name must be a constant.
-    embedder.copySync(libDir.childFile('libflutter_tizen.so').path);
-    icuData.copySync(resDir.childFile(icuData.basename).path);
-
-    if (buildMode.isPrecompiled) {
-      final File aotSharedLib = environment.buildDir.childFile('app.so');
-      aotSharedLib.copySync(libDir.childFile('libapp.so').path);
-    }
-
-    final Directory pluginsDir =
-        environment.buildDir.childDirectory('tizen_plugins');
-    final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
-    if (pluginsLib.existsSync()) {
-      pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
-    }
-    final Directory pluginsUserLibDir = pluginsDir.childDirectory('lib');
-    if (pluginsUserLibDir.existsSync()) {
-      pluginsUserLibDir.listSync().whereType<File>().forEach(
-          (File lib) => lib.copySync(libDir.childFile(lib.basename).path));
-    }
-
-    // Run the .NET build.
-    if (dotnetCli == null) {
-      throwToolExit(
-        'Unable to locate .NET CLI executable.\n'
-        'Install the latest .NET SDK from: https://dotnet.microsoft.com/download',
+      // Copy necessary files.
+      final Directory flutterAssetsDir =
+          resDir.childDirectory('flutter_assets');
+      copyDirectory(
+        environment.outputDir.childDirectory('flutter_assets'),
+        flutterAssetsDir,
       );
-    }
-    final RunResult result = await _processUtils.run(<String>[
-      dotnetCli.path,
-      'build',
-      '-c',
-      if (buildMode.isPrecompiled) 'Release' else 'Debug',
-      '-o',
-      '${outputDir.path}/', // The trailing '/' is needed.
-      tizenProject.editableDirectory.path,
-    ]);
-    if (result.exitCode != 0) {
-      throwToolExit('Failed to build .NET application:\n$result');
+
+      final BuildMode buildMode = buildInfo.buildInfo.mode;
+      final Directory engineDir =
+          getEngineArtifactsDirectory(buildInfo.targetArch, buildMode);
+      final Directory commonDir =
+          engineDir.parent.childDirectory('tizen-common');
+
+      final File engineBinary = engineDir.childFile('libflutter_engine.so');
+      final File embedder =
+          engineDir.childFile('libflutter_tizen_${buildInfo.deviceProfile}.so');
+      final File icuData =
+          commonDir.childDirectory('icu').childFile('icudtl.dat');
+
+      engineBinary.copySync(libDir.childFile(engineBinary.basename).path);
+      // The embedder so name is statically defined in C# code and cannot be
+      // provided at runtime, so the file name must be a constant.
+      embedder.copySync(libDir.childFile('libflutter_tizen.so').path);
+      icuData.copySync(resDir.childFile(icuData.basename).path);
+
+      if (buildMode.isPrecompiled) {
+        final File aotSharedLib = environment.buildDir.childFile('app.so');
+        aotSharedLib.copySync(libDir.childFile('libapp.so').path);
+      }
+
+      final Directory pluginsDir =
+          environment.buildDir.childDirectory('tizen_plugins');
+      final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
+      if (pluginsLib.existsSync()) {
+        pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
+      }
+      final Directory pluginsUserLibDir = pluginsDir.childDirectory('lib');
+      if (pluginsUserLibDir.existsSync()) {
+        pluginsUserLibDir.listSync().whereType<File>().forEach(
+            (File lib) => lib.copySync(libDir.childFile(lib.basename).path));
+      }
+
+      // Run the .NET build.
+      if (dotnetCli == null) {
+        throwToolExit(
+          'Unable to locate .NET CLI executable.\n'
+          'Install the latest .NET SDK from: https://dotnet.microsoft.com/download',
+        );
+      }
+      final RunResult result = await _processUtils.run(<String>[
+        dotnetCli.path,
+        'build',
+        '-c',
+        if (buildMode.isPrecompiled) 'Release' else 'Debug',
+        '-o',
+        '${outputDir.path}/', // The trailing '/' is needed.
+        projectDir.path,
+      ]);
+      if (result.exitCode != 0) {
+        throwToolExit('Failed to build .NET application:\n$result');
+      }
+
+      final File outputTpk = projectDir.basename == 'service'
+          ? outputDir.childFile(tizenProject.outputTpkName)
+          : outputDir.childFile(tizenProject.outputTpkName);
+      if (!outputTpk.existsSync()) {
+        throwToolExit(
+            'Build succeeded but the expected TPK not found:\n${result.stdout}');
+      }
     }
 
-    final File outputTpk = outputDir.childFile(tizenProject.outputTpkName);
-    if (!outputTpk.existsSync()) {
-      throwToolExit(
-          'Build succeeded but the expected TPK not found:\n${result.stdout}');
+    final File outputTpk = environment.outputDir
+        .childDirectory('tpk')
+        .childFile(tizenProject.outputTpkName);
+    if (tizenProject.isMultiApp) {
+      final File uiTpk = environment.outputDir
+          .childDirectory('tpk')
+          .childDirectory('ui')
+          .childFile(tizenProject.outputTpkName);
+      final File serviceTpk = environment.outputDir
+          .childDirectory('tpk')
+          .childDirectory('service')
+          .childFile(tizenProject.outputTpkName);
+      final RunResult result =
+          await tizenSdk.package(uiTpk.path, reference: serviceTpk.path);
+      if (result.exitCode != 0) {
+        throwToolExit('Failed to generate an output TPK:\n$result');
+      }
+      uiTpk.copySync(outputTpk.path);
     }
 
     // build-task-tizen signs the output TPK with a dummy profile by default.
