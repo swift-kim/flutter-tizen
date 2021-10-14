@@ -47,6 +47,7 @@ abstract class TizenAssetBundle extends Target {
   @override
   List<Target> get dependencies => const <Target>[
         KernelSnapshot(),
+        DartPluginRegistrant(),
       ];
 
   @override
@@ -120,6 +121,7 @@ class TizenAotElf extends AotElfBase {
   @override
   List<Target> get dependencies => const <Target>[
         KernelSnapshot(),
+        DartPluginRegistrant(),
       ];
 }
 

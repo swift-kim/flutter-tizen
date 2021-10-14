@@ -11,7 +11,10 @@ import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/build_system/depfile.dart';
 import 'package:flutter_tools/src/build_system/source.dart';
+import 'package:flutter_tools/src/build_system/targets/dart_plugin_registrant.dart';
+import 'package:flutter_tools/src/dart/package_map.dart';
 import 'package:flutter_tools/src/project.dart';
+import 'package:package_config/package_config.dart';
 
 import '../tizen_build_info.dart';
 import '../tizen_plugins.dart';
@@ -19,6 +22,78 @@ import '../tizen_project.dart';
 import '../tizen_sdk.dart';
 import '../tizen_tpk.dart';
 import 'utils.dart';
+
+/// Source: [DartPluginRegistrantTarget] in `dart_plugin_registrant.dart`
+class DartPluginRegistrant extends Target {
+  const DartPluginRegistrant();
+
+  @override
+  String get name => 'tizen_dart_plugin_registrant';
+
+  @override
+  List<Source> get inputs => <Source>[
+        const Source.pattern('{PROJECT_DIR}/.dart_tool/package_config_subset'),
+      ];
+
+  @override
+  List<Source> get outputs => <Source>[
+        const Source.pattern(
+          '{PROJECT_DIR}/.dart_tool/flutter_build/generated_main.dart',
+          optional: true,
+        ),
+      ];
+
+  @override
+  List<Target> get dependencies => <Target>[];
+
+  @override
+  Future<void> build(Environment environment) async {
+    assert(environment.generateDartPluginRegistry);
+
+    final FlutterProject project =
+        FlutterProject.fromDirectory(environment.projectDir);
+    final List<TizenPlugin> dartPlugins =
+        await findTizenPlugins(project, dartOnly: true);
+    if (dartPlugins.isEmpty) {
+      return;
+    }
+
+    final File packagesFile = environment.projectDir
+        .childDirectory('.dart_tool')
+        .childFile('package_config.json');
+    final PackageConfig packageConfig = await loadPackageConfigWithLogging(
+      packagesFile,
+      logger: environment.logger,
+    );
+    final String targetFile = environment.defines[kTargetFile] ??
+        environment.fileSystem.path.join('lib', 'main.dart');
+    final File mainFile = environment.fileSystem.file(targetFile);
+    final Uri mainFileUri = mainFile.absolute.uri;
+    final Uri mainUri = packageConfig.toPackageUri(mainFileUri) ?? mainFileUri;
+    final File newMainDart = environment.projectDir
+        .childDirectory('.dart_tool')
+        .childDirectory('flutter_build')
+        .childFile('generated_main.dart');
+    createEntrypointWithPluginRegistrant(
+      dartPlugins,
+      packageConfig,
+      mainUri.toString(),
+      newMainDart,
+      mainFile,
+    );
+  }
+
+  @override
+  bool canSkip(Environment environment) {
+    if (!environment.generateDartPluginRegistry) {
+      return true;
+    }
+    final String? platformName = environment.defines[kTargetPlatform];
+    if (platformName == null) {
+      return true;
+    }
+  }
+}
 
 /// Compiles Tizen native plugins into a shared object.
 class NativePlugins extends Target {
