@@ -4,20 +4,40 @@
 
 // @dart = 2.8
 
-import 'package:file/memory.dart';
 import 'package:flutter_tizen/tizen_sdk.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
-import 'package:test/fake.dart';
+import 'package:flutter_tools/src/base/logger.dart';
+import 'package:flutter_tools/src/base/platform.dart';
+import 'package:meta/meta.dart';
+import 'package:process/process.dart';
 
-class FakeTizenSdk extends Fake implements TizenSdk {
-  FakeTizenSdk({FileSystem fileSystem})
-      : _fileSystem = fileSystem ?? MemoryFileSystem.test();
+import 'fake_process_manager.dart';
 
-  final FileSystem _fileSystem;
+class FakeTizenSdk extends TizenSdk {
+  FakeTizenSdk(
+    FileSystem fileSystem, {
+    Logger logger,
+    Platform platform,
+    ProcessManager processManager,
+  }) : super(
+          fileSystem.directory('/tizen-studio'),
+          logger: logger ?? BufferLogger.test(),
+          platform: platform ?? FakePlatform(),
+          processManager: processManager ?? FakeProcessManager.any(),
+        );
 
   @override
-  File get sdb => _fileSystem.file('sdb')..createSync();
+  File get sdb => super.sdb..createSync(recursive: true);
 
   @override
-  File get tizenCli => _fileSystem.file('tizen-cli')..createSync();
+  File get tizenCli => super.tizenCli..createSync(recursive: true);
+
+  @override
+  Rootstrap getFlutterRootstrap({
+    @required String profile,
+    @required String apiVersion,
+    @required String arch,
+  }) {
+    return Rootstrap('rootstrap', directory.childDirectory('rootstrap'));
+  }
 }

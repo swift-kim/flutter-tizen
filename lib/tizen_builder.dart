@@ -118,7 +118,7 @@ class TizenBuilder {
       logger: _logger,
       processManager: _processManager,
       platform: _platform,
-      generateDartPluginRegistry: true,
+      generateDartPluginRegistry: false,
     );
 
     final Target target = buildInfo.isDebug

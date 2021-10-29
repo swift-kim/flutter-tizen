@@ -31,13 +31,13 @@ TizenDevice _createTizenDevice({
     modelId: 'TestModel',
     logger: BufferLogger.test(),
     processManager: processManager ?? FakeProcessManager.any(),
-    tizenSdk: FakeTizenSdk(fileSystem: fileSystem),
+    tizenSdk: FakeTizenSdk(fileSystem),
     fileSystem: fileSystem,
   );
 }
 
 List<String> _sdbCommand(List<String> args) {
-  return <String>['sdb', '-s', _kDeviceId, ...args];
+  return <String>['/tizen-studio/tools/sdb', '-s', _kDeviceId, ...args];
 }
 
 void main() {

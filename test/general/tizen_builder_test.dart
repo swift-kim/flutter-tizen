@@ -27,8 +27,8 @@ import '../src/test_flutter_command_runner.dart';
 
 const String _kTizenManifestContents = '''
 <manifest package="package_id" version="1.0.0" api-version="4.0">
-  <profile name="common"/>
-  <ui-application appid="app_id" exec="Runner.dll" type="dotnet"/>
+    <profile name="common"/>
+    <ui-application appid="app_id" exec="Runner.dll" type="dotnet"/>
 </manifest>
 ''';
 
@@ -46,8 +46,7 @@ void main() {
   setUp(() {
     fileSystem = MemoryFileSystem.test();
     fileSystem.file('pubspec.yaml').createSync();
-    fileSystem.file('.packages').createSync();
-    fileSystem.directory('.dart_tool').childFile('package_config.json')
+    fileSystem.file('.dart_tool/package_config.json')
       ..createSync(recursive: true)
       ..writeAsStringSync('{"configVersion": 2, "packages": []}');
     processManager = FakeProcessManager.any();
@@ -73,7 +72,7 @@ void main() {
       () => tizenBuilder.buildTpk(
         project: project,
         tizenBuildInfo: tizenBuildInfo,
-        targetFile: 'some_file.dart',
+        targetFile: 'main.dart',
       ),
       throwsToolExit(message: 'This project is not configured for Tizen.'),
     );
@@ -83,7 +82,7 @@ void main() {
   });
 
   testUsingContext('Build fails if Tizen Studio is not installed', () async {
-    fileSystem.directory('tizen').childFile('tizen-manifest.xml')
+    fileSystem.file('tizen/tizen-manifest.xml')
       ..createSync(recursive: true)
       ..writeAsStringSync(_kTizenManifestContents);
 
@@ -91,7 +90,7 @@ void main() {
       () => tizenBuilder.buildTpk(
         project: project,
         tizenBuildInfo: tizenBuildInfo,
-        targetFile: 'some_file.dart',
+        targetFile: 'main.dart',
       ),
       throwsToolExit(message: 'Unable to locate Tizen CLI executable.'),
     );
@@ -101,7 +100,7 @@ void main() {
   });
 
   testUsingContext('Output TPK is missing', () async {
-    fileSystem.directory('tizen').childFile('tizen-manifest.xml')
+    fileSystem.file('tizen/tizen-manifest.xml')
       ..createSync(recursive: true)
       ..writeAsStringSync(_kTizenManifestContents);
 
@@ -109,22 +108,64 @@ void main() {
       () => tizenBuilder.buildTpk(
         project: project,
         tizenBuildInfo: tizenBuildInfo,
-        targetFile: 'some_file.dart',
+        targetFile: 'main.dart',
       ),
       throwsToolExit(message: 'The output TPK does not exist.'),
     );
   }, overrides: <Type, Generator>{
     FileSystem: () => fileSystem,
     ProcessManager: () => processManager,
-    TizenSdk: () => FakeTizenSdk(fileSystem: fileSystem),
+    TizenSdk: () => FakeTizenSdk(fileSystem),
     BuildSystem: () => TestBuildSystem.all(BuildResult(success: true)),
-    PackageBuilder: () => _FakePackageBuilder(),
+    PackageBuilder: () => _FakePackageBuilder(null),
+  });
+
+  testUsingContext('Can update tizen-manifest.xml', () async {
+    fileSystem.file('tizen/tizen-manifest.xml')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(_kTizenManifestContents);
+
+    const BuildInfo buildInfo = BuildInfo(
+      BuildMode.debug,
+      null,
+      treeShakeIcons: false,
+      buildName: '9.9.9',
+    );
+    await tizenBuilder.buildTpk(
+      project: project,
+      tizenBuildInfo: const TizenBuildInfo(
+        buildInfo,
+        targetArch: 'arm',
+        deviceProfile: 'wearable',
+      ),
+      targetFile: 'main.dart',
+    );
+
+    final String tizenManifest =
+        fileSystem.file('tizen/tizen-manifest.xml').readAsStringSync();
+    expect(tizenManifest, isNot(equals(_kTizenManifestContents)));
+    expect(tizenManifest, contains('9.9.9'));
+    expect(tizenManifest, contains('wearable'));
+  }, overrides: <Type, Generator>{
+    FileSystem: () => fileSystem,
+    ProcessManager: () => processManager,
+    TizenSdk: () => FakeTizenSdk(fileSystem),
+    BuildSystem: () => TestBuildSystem.all(BuildResult(success: true)),
+    PackageBuilder: () => _FakePackageBuilder('tpk/package_id-9.9.9.tpk'),
   });
 }
 
 class _FakePackageBuilder extends PackageBuilder {
+  _FakePackageBuilder(this._relativeOutputPath);
+
+  final String _relativeOutputPath;
+
   @override
-  Future<bool> build(Target target, Environment environment) async {
-    return true;
+  Future<void> build(Target target, Environment environment) async {
+    if (_relativeOutputPath != null) {
+      environment.outputDir
+          .childFile(_relativeOutputPath)
+          .createSync(recursive: true);
+    }
   }
 }
