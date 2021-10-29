@@ -18,7 +18,6 @@ import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/project.dart';
 import 'package:flutter_tools/src/reporting/reporting.dart';
-import 'package:test/fake.dart';
 
 import '../src/common.dart';
 import '../src/context.dart';
@@ -119,17 +118,13 @@ void main() {
     ProcessManager: () => processManager,
     TizenSdk: () => FakeTizenSdk(fileSystem: fileSystem),
     BuildSystem: () => TestBuildSystem.all(BuildResult(success: true)),
-    PackageBuilder: () => FakePackageBuilder(),
+    PackageBuilder: () => _FakePackageBuilder(),
   });
 }
 
-class FakePackageBuilder extends Fake implements PackageBuilder {
+class _FakePackageBuilder extends PackageBuilder {
   @override
-  Future<BuildResult> build(
-    Target target,
-    Environment environment, {
-    BuildSystemConfig buildSystemConfig = const BuildSystemConfig(),
-  }) async {
-    return BuildResult(success: true);
+  Future<bool> build(Target target, Environment environment) async {
+    return true;
   }
 }

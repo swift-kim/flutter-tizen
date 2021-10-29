@@ -12,6 +12,7 @@ import 'package:flutter_tools/src/build_system/build_system.dart';
 import 'package:flutter_tools/src/cache.dart';
 import 'package:flutter_tools/src/globals_null_migrated.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
+import 'package:meta/meta.dart';
 
 import '../tizen_build_info.dart';
 import '../tizen_project.dart';
@@ -21,48 +22,32 @@ import 'utils.dart';
 
 PackageBuilder? get packageBuilder => context.get<PackageBuilder>();
 
-/// A non-incremental [BuildSystem] that builds a single build target
-/// unconditionally without skipping.
-class PackageBuilder extends BuildSystem {
+/// A pseudo [BuildSystem] that performs a non-incremental build of [Package]
+/// without skipping.
+class PackageBuilder {
   const PackageBuilder();
 
-  @override
-  Future<BuildResult> build(
-    Target target,
-    Environment environment, {
-    BuildSystemConfig buildSystemConfig = const BuildSystemConfig(),
-  }) async {
+  Future<void> build(Package target, Environment environment) async {
     environment.buildDir.createSync(recursive: true);
     environment.outputDir.createSync(recursive: true);
 
-    if (target is CompositeTarget || target.dependencies.isNotEmpty) {
-      environment.logger.printError(
-          'Only a single target can be built by $PackageBuilder at once.');
-      return BuildResult(success: false);
-    }
+    environment.logger.printTrace('Building target: ${target.name}');
     await target.build(environment);
-    return BuildResult(success: true);
-  }
-
-  @override
-  Future<BuildResult> buildIncremental(
-    Target target,
-    Environment environment,
-    BuildResult? previousBuild,
-  ) {
-    return build(target, environment);
   }
 }
 
 abstract class Package extends Target {
   const Package();
 
+  @nonVirtual
   @override
   List<Source> get inputs => const <Source>[];
 
+  @nonVirtual
   @override
   List<Source> get outputs => const <Source>[];
 
+  @nonVirtual
   @override
   List<Target> get dependencies => const <Target>[];
 }

@@ -129,7 +129,8 @@ class TizenBuilder {
     final Status status = _logger.startProgress(
         'Building a Tizen application in $buildModeName mode...');
     try {
-      BuildResult result = await globals.buildSystem.build(target, environment);
+      final BuildResult result =
+          await globals.buildSystem.build(target, environment);
       if (!result.success) {
         for (final ExceptionMeasurement measurement
             in result.exceptions.values) {
@@ -139,13 +140,10 @@ class TizenBuilder {
       }
 
       // The packaging step must not be skipped even if there's no code change.
-      final Target package = tizenProject.isDotnet
+      final Package package = tizenProject.isDotnet
           ? DotnetTpk(tizenBuildInfo)
           : NativeTpk(tizenBuildInfo);
-      result = await packageBuilder.build(package, environment);
-      if (!result.success) {
-        throwToolExit('Packaging failed.');
-      }
+      await packageBuilder.build(package, environment);
 
       if (buildInfo.performanceMeasurementFile != null) {
         final File outFile =
