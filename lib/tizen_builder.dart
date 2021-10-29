@@ -129,8 +129,7 @@ class TizenBuilder {
     final Status status = _logger.startProgress(
         'Building a Tizen application in $buildModeName mode...');
     try {
-      final BuildResult result =
-          await globals.buildSystem.build(target, environment);
+      BuildResult result = await globals.buildSystem.build(target, environment);
       if (!result.success) {
         for (final ExceptionMeasurement measurement
             in result.exceptions.values) {
@@ -139,12 +138,13 @@ class TizenBuilder {
         throwToolExit('The build failed.');
       }
 
-      // These pseudo targets cannot be skipped and should be invoked whenever
-      // the build is run.
-      if (tizenProject.isDotnet) {
-        await DotnetTpk(tizenBuildInfo).build(environment);
-      } else {
-        await NativeTpk(tizenBuildInfo).build(environment);
+      // The packaging step must not be skipped even if there's no code change.
+      final Target package = tizenProject.isDotnet
+          ? DotnetTpk(tizenBuildInfo)
+          : NativeTpk(tizenBuildInfo);
+      result = await packageBuilder.build(package, environment);
+      if (!result.success) {
+        throwToolExit('Packaging failed.');
       }
 
       if (buildInfo.performanceMeasurementFile != null) {
@@ -159,6 +159,9 @@ class TizenBuilder {
 
     final Directory tpkDir = outputDir.childDirectory('tpk');
     final File tpkFile = tpkDir.childFile(tizenProject.outputTpkName);
+    if (!tpkFile.existsSync()) {
+      throwToolExit('The output TPK does not exist.');
+    }
     final String relativeTpkPath = _fileSystem.path.relative(tpkFile.path);
     final String tpkSize = getSizeAsMB(tpkFile.lengthSync());
     _logger.printStatus(
