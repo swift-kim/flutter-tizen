@@ -50,6 +50,14 @@ class FakeTizenSdk extends TizenSdk {
     Map<String, Object> package = const <String, Object>{},
     String sign,
   }) async {
+    final List<String> buildConfigs = method['configs'] as List<String>;
+    expect(buildConfigs, isNotEmpty);
+
+    final Directory projectDir = fileSystem.directory(workingDirectory);
+    projectDir
+        .childFile('${buildConfigs.first}/app.tpk')
+        .createSync(recursive: true);
+
     return RunResult(ProcessResult(0, 0, '', ''), <String>['build-app']);
   }
 

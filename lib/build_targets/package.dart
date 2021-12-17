@@ -110,8 +110,8 @@ class DotnetTpk extends Package {
     icuData.copySync(resDir.childFile(icuData.basename).path);
 
     if (buildMode.isPrecompiled) {
-      final File aotSharedLib = environment.buildDir.childFile('app.so');
-      aotSharedLib.copySync(libDir.childFile('libapp.so').path);
+      final File aotSnapshot = environment.buildDir.childFile('app.so');
+      aotSnapshot.copySync(libDir.childFile('libapp.so').path);
     }
 
     final Directory pluginsDir =
@@ -242,8 +242,8 @@ class NativeTpk extends Package {
     icuData.copySync(resDir.childFile(icuData.basename).path);
 
     if (buildMode.isPrecompiled) {
-      final File aotSharedLib = environment.buildDir.childFile('app.so');
-      aotSharedLib.copySync(libDir.childFile('libapp.so').path);
+      final File aotSnapshot = environment.buildDir.childFile('app.so');
+      aotSnapshot.copySync(libDir.childFile('libapp.so').path);
     }
 
     final Directory pluginsDir =
