@@ -33,7 +33,8 @@ void main() {
     projectDir = fileSystem.currentDirectory;
   });
 
-  testWithoutContext('Build native app', () async {
+  testWithoutContext('TizenSdk.buildApp invokes the build-app command',
+      () async {
     processManager.addCommand(FakeCommand(
       command: <String>[
         '/tizen-studio/tools/ide/bin/tizen',
@@ -81,7 +82,8 @@ void main() {
     expect(processManager, hasNoRemainingExpectations);
   });
 
-  testWithoutContext('Build native library', () async {
+  testWithoutContext('TizenSdk.buildNative invokes the build-native command',
+      () async {
     processManager.addCommand(FakeCommand(
       command: <String>[
         '/tizen-studio/tools/ide/bin/tizen',
@@ -114,5 +116,21 @@ void main() {
     );
 
     expect(processManager, hasNoRemainingExpectations);
+  });
+
+  testWithoutContext('parseIniFile parses properties from INI file', () async {
+    final File file = fileSystem.file('test_file.ini');
+    file.writeAsStringSync('''
+AAA=aaa
+ BBB = bbb
+CCC=ccc=ccc
+#DDD=ddd
+''');
+    final Map<String, String> result = parseIniFile(file);
+
+    expect(result['AAA'], equals('aaa'));
+    expect(result['BBB'], equals('bbb'));
+    expect(result['CCC'], equals('ccc=ccc'));
+    expect(result['DDD'], isNull);
   });
 }
