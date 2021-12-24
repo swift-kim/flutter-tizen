@@ -32,12 +32,10 @@ import 'package:process/process.dart';
 import 'build_targets/application.dart';
 import 'build_targets/package.dart';
 import 'tizen_build_info.dart';
+import 'tizen_debug_config.dart';
 import 'tizen_project.dart';
 import 'tizen_sdk.dart';
 import 'tizen_tpk.dart';
-
-/// The define to control what Tizen device is built for.
-const String kDeviceProfile = 'DeviceProfile';
 
 TizenBuilder? get tizenBuilder => context.get<TizenBuilder>();
 
@@ -98,6 +96,8 @@ class TizenBuilder {
     // Used by AotElfBase to generate an AOT snapshot.
     final String targetPlatform = getNameForTargetPlatform(
         _getTargetPlatformForArch(tizenBuildInfo.targetArch));
+    final bool enableNativeDebugging =
+        tizenDebugConfig?.enableNativeDebugging ?? false;
 
     final Environment environment = Environment(
       projectDir: project.directory,
@@ -111,6 +111,7 @@ class TizenBuilder {
         kTargetPlatform: targetPlatform,
         ...buildInfo.toBuildSystemEnvironment(),
         kDeviceProfile: tizenBuildInfo.deviceProfile,
+        kEnableNativeDebugging: enableNativeDebugging.toString(),
       },
       artifacts: _artifacts,
       fileSystem: _fileSystem,

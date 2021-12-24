@@ -4,6 +4,12 @@
 
 import 'package:flutter_tools/src/build_info.dart';
 
+/// The define to control which Tizen device is built for.
+const String kDeviceProfile = 'DeviceProfile';
+
+/// Whether to allow debugging of the output binaries.
+const String kEnableNativeDebugging = 'EnableNativeDebugging';
+
 /// See: [AndroidBuildInfo] in `build_info.dart`
 class TizenBuildInfo {
   const TizenBuildInfo(

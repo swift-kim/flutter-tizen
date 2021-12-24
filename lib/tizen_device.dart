@@ -25,9 +25,11 @@ import 'package:meta/meta.dart';
 import 'package:path/path.dart';
 import 'package:process/process.dart';
 
+// ignore: import_of_legacy_library_into_null_safe
 import 'forwarding_log_reader.dart';
 import 'tizen_build_info.dart';
 import 'tizen_builder.dart';
+import 'tizen_debug_config.dart';
 import 'tizen_sdk.dart';
 import 'tizen_tpk.dart';
 import 'vscode_helper.dart';
@@ -406,6 +408,46 @@ class TizenDevice extends Device {
     // Pass engine arguments to the app by writing to a temporary file.
     // See: https://github.com/flutter-tizen/flutter-tizen/pull/19
     await _writeEngineArguments(engineArgs, '${package.applicationId}.rpm');
+
+    void _installGdbserver() {
+      // TODO: move this function
+      final String arch = architecture == 'arm'
+          ? 'armel'
+          : architecture == 'arm64'
+              ? 'aarch64'
+              : 'i586';
+      final String tarName = 'gdbserver_8.3.1_$arch.tar';
+      final File tarArchive = tizenSdk!.toolsDirectory
+          .childDirectory('on-demand')
+          .childFile(tarName);
+      if (!tarArchive.existsSync()) {
+        _logger.printError('oooooops');
+        return;
+      }
+      const String sdkToolsPath = '/home/owner/share/tmp/sdk_tools';
+      try {
+        // TODO: check results
+        runSdbSync(<String>['shell', 'mkdir', '-p', sdkToolsPath]);
+        runSdbSync(<String>['push', tarArchive.path, '$sdkToolsPath/$tarName']);
+        runSdbSync(<String>[
+          'shell',
+          'tar',
+          '-xf',
+          '$sdkToolsPath/$tarName',
+          '-C',
+          sdkToolsPath
+        ]);
+      } on Exception catch (error) {
+        _logger.printError('Error: $error');
+      }
+    }
+
+    if (tizenDebugConfig != null && tizenDebugConfig!.enableNativeDebugging) {
+      // TODO: check TV
+      _installGdbserver();
+
+      // Process.start? ProcessManager? (see AdbLogReader)
+    }
 
     final List<String> command = usesSecureProtocol
         ? <String>['shell', '0', 'execute', package.applicationId]

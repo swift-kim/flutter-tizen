@@ -52,6 +52,7 @@ import 'tizen_application_package.dart';
 import 'tizen_artifacts.dart';
 import 'tizen_builder.dart';
 import 'tizen_cache.dart';
+import 'tizen_debug_config.dart';
 import 'tizen_device_manager.dart';
 import 'tizen_doctor.dart';
 import 'tizen_emulator.dart';
@@ -216,6 +217,7 @@ Future<void> main(List<String> args) async {
             usage: globals.flutterUsage,
             platform: globals.platform,
           ),
+      TizenDebugConfig: () => TizenDebugConfig(),
       TizenSdk: () => TizenSdk.locateSdk(),
       TizenValidator: () => TizenValidator(
             tizenSdk: tizenSdk,

@@ -132,12 +132,21 @@ class NativePlugins extends Target {
     final List<String> userLibs = <String>[];
     final List<String> pluginClasses = <String>[];
 
+    final bool enableNativeDebugging =
+        environment.defines[kEnableNativeDebugging] == 'true';
+
     for (final TizenPlugin plugin in nativePlugins) {
       // Create a copy of the plugin to allow editing its projectFile.
-      final TizenPlugin pluginCopy = plugin.copyWith(
-        directory: environment.fileSystem.systemTempDirectory.createTempSync(),
-      );
-      copyDirectory(plugin.directory, pluginCopy.directory);
+      TizenPlugin pluginCopy;
+      if (enableNativeDebugging) {
+        pluginCopy = plugin;
+      } else {
+        pluginCopy = plugin.copyWith(
+          directory:
+              environment.fileSystem.systemTempDirectory.createTempSync(),
+        );
+        copyDirectory(plugin.directory, pluginCopy.directory);
+      }
 
       _ensureStaticLibType(pluginCopy, environment.logger);
       inputs.add(plugin.projectFile);
@@ -252,9 +261,13 @@ USER_LIBS = pthread ${userLibs.join(' ')}
     // Create a temp directory to use as a build directory.
     // This is a workaround for the long path issue on Windows:
     // https://github.com/flutter-tizen/flutter-tizen/issues/122
-    final Directory tempDir =
-        environment.fileSystem.systemTempDirectory.createTempSync();
-    copyDirectory(rootDir, tempDir);
+    Directory tempDir;
+    if (enableNativeDebugging) {
+      tempDir = rootDir;
+    } else {
+      tempDir = environment.fileSystem.systemTempDirectory.createTempSync();
+      copyDirectory(rootDir, tempDir);
+    }
 
     // Run the native build.
     final RunResult result = await tizenSdk!.buildNative(
