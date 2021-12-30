@@ -327,6 +327,7 @@ class TizenDevice extends Device {
     if (platformVersion != null && platformVersion >= Version(6, 0, 0)) {
       gdbVersion = '8.3.1';
     }
+    // TODO: i386/i586
     final String arch = getTizenBuildArch(architecture);
     final String tarName = 'gdbserver_${gdbVersion}_$arch.tar';
     final File tarArchive =
@@ -338,24 +339,89 @@ class TizenDevice extends Device {
     _logger.printTrace('Installing $tarName to $name.');
 
     const String sdkToolsPath = '/home/owner/share/tmp/sdk_tools';
+    final String remoteArchivePath = '$sdkToolsPath/$tarName';
     try {
-      // TODO: check results, use async
-      runSdbSync(<String>['shell', 'mkdir', '-p', sdkToolsPath]);
-      runSdbSync(<String>['push', tarArchive.path, '$sdkToolsPath/$tarName']);
-      runSdbSync(<String>[
+      final RunResult mkdirResult = await runSdbAsync(<String>[
+        'shell',
+        'mkdir',
+        '-p',
+        sdkToolsPath,
+      ]);
+      if (mkdirResult.stdout.isNotEmpty) {
+        mkdirResult.throwException(mkdirResult.stdout);
+      }
+      final RunResult pushResult = await runSdbAsync(<String>[
+        'push',
+        tarArchive.path,
+        remoteArchivePath,
+      ]);
+      if (!pushResult.stdout.contains('file(s) pushed')) {
+        pushResult.throwException(pushResult.stdout);
+      }
+      final RunResult extractResult = await runSdbAsync(<String>[
         'shell',
         'tar',
         '-xf',
-        '$sdkToolsPath/$tarName',
+        remoteArchivePath,
         '-C',
         sdkToolsPath
       ]);
-      runSdbSync(<String>['shell', 'rm', '$sdkToolsPath/$tarName']);
-    } on Exception catch (error) {
+      if (extractResult.stdout.isNotEmpty) {
+        extractResult.throwException(extractResult.stdout);
+      }
+    } on ProcessException catch (error) {
       _logger.printError('Error installing gdbserver: $error');
       return false;
     }
+    // Remove an intermediate file.
+    await runSdbAsync(
+      <String>['shell', 'rm', remoteArchivePath],
+      checked: false,
+    );
     return true;
+  }
+
+  Future<int?> _startAppUnderGdbServer(String applicationId) async {
+    // Forward a port to allow communication between gdb and gdbserver.
+    final int debugPort = await globals.os.findFreePort();
+    await portForwarder.forward(debugPort, hostPort: debugPort);
+
+    final List<String> command = _sdbCommand(<String>[
+      'launch',
+      '-a',
+      '"$applicationId"',
+      '-p',
+      '-e',
+      '-m',
+      'debug',
+      '-P',
+      '$debugPort',
+    ]);
+    final Process process = await _processManager.start(command);
+    final Completer<void> completer = Completer<void>();
+    process.stdout
+        .transform<String>(const Utf8Decoder())
+        .transform<String>(const LineSplitter())
+        .listen((String line) {
+      if (line.contains('launch failed') || line.contains('gdbserver:')) {
+        completer.completeError(line);
+      } else if (line.contains('successfully launched')) {
+        completer.complete();
+      }
+    });
+    process.stderr
+        .transform<String>(const Utf8Decoder())
+        .transform<String>(const LineSplitter())
+        .listen((String line) {
+      completer.completeError(line);
+    });
+    try {
+      await completer.future.timeout(const Duration(seconds: 10));
+    } on Exception catch (error) {
+      _logger.printError('Launch failed: $error');
+      return null;
+    }
+    return debugPort;
   }
 
   /// Source: [AndroidDevice.startApp] in `android_device.dart`
@@ -473,46 +539,11 @@ class TizenDevice extends Device {
       }
     }
     if (nativeDebuggingEnabled && nativeDebuggingSupported) {
-      // Forward a port to allow communication between gdb and gdbserver.
-      final int debugPort = await globals.os.findFreePort();
-      await portForwarder.forward(debugPort, hostPort: debugPort);
-
-      final List<String> command = _sdbCommand(<String>[
-        'launch',
-        '-a',
-        '"${package.applicationId}"',
-        '-p',
-        '-e',
-        '-m',
-        'debug',
-        '-P',
-        '$debugPort',
-      ]);
-      final Process process = await _processManager.start(command);
-      final Completer<void> completer = Completer<void>();
-      process.stdout
-          .transform<String>(const Utf8Decoder())
-          .transform<String>(const LineSplitter())
-          .listen((String line) {
-        if (line.contains('launch failed') || line.contains('gdbserver:')) {
-          completer.completeError(line);
-        } else if (line.contains('successfully launched')) {
-          completer.complete();
-        }
-      });
-      process.stderr
-          .transform<String>(const Utf8Decoder())
-          .transform<String>(const LineSplitter())
-          .listen((String line) {
-        completer.completeError(line);
-      });
-      try {
-        await completer.future.timeout(const Duration(seconds: 10));
-      } on Exception catch (error) {
-        _logger.printError('Launch failed: $error');
+      final int? debugPort =
+          await _startAppUnderGdbServer(package.applicationId);
+      if (debugPort == null) {
         return LaunchResult.failed();
       }
-
       // TODO: show instructions to connect
       // TODO: write to launch.json
       _logger.printStatus('gdbserver launch successful!!! port: $debugPort');
