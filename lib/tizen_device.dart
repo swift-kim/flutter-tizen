@@ -321,7 +321,7 @@ class TizenDevice extends Device {
     }
   }
 
-  Future<void> _installGdbServer() async {
+  Future<bool> _installGdbServer() async {
     String gdbVersion = '7.8.1';
     final Version? platformVersion = Version.parse(_platformVersion);
     if (platformVersion != null && platformVersion >= Version(6, 0, 0)) {
@@ -333,7 +333,7 @@ class TizenDevice extends Device {
         tizenSdk!.toolsDirectory.childDirectory('on-demand').childFile(tarName);
     if (!tarArchive.existsSync()) {
       _logger.printError('The file ${tarArchive.path} could not be found.');
-      return;
+      return false;
     }
     _logger.printTrace('Installing $tarName to $name.');
 
@@ -353,7 +353,9 @@ class TizenDevice extends Device {
       runSdbSync(<String>['shell', 'rm', '$sdkToolsPath/$tarName']);
     } on Exception catch (error) {
       _logger.printError('Error installing gdbserver: $error');
+      return false;
     }
+    return true;
   }
 
   /// Source: [AndroidDevice.startApp] in `android_device.dart`
@@ -460,47 +462,61 @@ class TizenDevice extends Device {
     // See: https://github.com/flutter-tizen/flutter-tizen/pull/19
     await _writeEngineArguments(engineArgs, '${package.applicationId}.rpm');
 
-    if (debuggingOptions.debuggingEnabled && nativeDebuggingEnabled) {
+    bool nativeDebuggingSupported = false;
+    if (nativeDebuggingEnabled) {
       if (package.isDotnet) {
-        _logger.printError('Only native apps support native debugging.');
+        _logger.printError('Native debugging is not supported by C# projects.');
       } else if (usesSecureProtocol) {
         _logger.printError('Native debugging is not supported by this device.');
-      } else {
-        await _installGdbServer();
-
-        // Forward a port to enable communication between gdb and gdbserver.
-        final int hostPort = await globals.os.findFreePort();
-        await portForwarder.forward(hostPort, hostPort: hostPort);
-
-        final Process process =
-            await _processManager.start(_sdbCommand(<String>[
-          'launch',
-          '-a',
-          '"${package.applicationId}"',
-          '-p',
-          '-e',
-          '-m',
-          'debug',
-          '-P',
-          '$hostPort',
-        ]));
-        // TODO: on error (e.g. gdbserver: Bad port argument: :  or  ... launch failed)
-        try {
-          await process.stdout
-              .timeout(const Duration(seconds: 10))
-              .transform<String>(const Utf8Decoder())
-              .transform<String>(const LineSplitter())
-              .skipWhile((String line) => !line.contains('Listening on port'))
-              .firstWhere(
-                  (String line) => line.contains('successfully launched'));
-          // TODO: show instructions to connect
-          _logger.printStatus('gdbserver launch successful!!! port: $hostPort');
-        } on TimeoutException {
-          _logger.printError('ooops');
-        }
+      } else if (await _installGdbServer()) {
+        nativeDebuggingSupported = true;
       }
+    }
+    if (nativeDebuggingEnabled && nativeDebuggingSupported) {
+      // Forward a port to allow communication between gdb and gdbserver.
+      final int debugPort = await globals.os.findFreePort();
+      await portForwarder.forward(debugPort, hostPort: debugPort);
+
+      final List<String> command = _sdbCommand(<String>[
+        'launch',
+        '-a',
+        '"${package.applicationId}"',
+        '-p',
+        '-e',
+        '-m',
+        'debug',
+        '-P',
+        '$debugPort',
+      ]);
+      final Process process = await _processManager.start(command);
+      final Completer<void> completer = Completer<void>();
+      process.stdout
+          .transform<String>(const Utf8Decoder())
+          .transform<String>(const LineSplitter())
+          .listen((String line) {
+        if (line.contains('launch failed') || line.contains('gdbserver:')) {
+          completer.completeError(line);
+        } else if (line.contains('successfully launched')) {
+          completer.complete();
+        }
+      });
+      process.stderr
+          .transform<String>(const Utf8Decoder())
+          .transform<String>(const LineSplitter())
+          .listen((String line) {
+        completer.completeError(line);
+      });
+      try {
+        await completer.future.timeout(const Duration(seconds: 10));
+      } on Exception catch (error) {
+        _logger.printError('Launch failed: $error');
+        return LaunchResult.failed();
+      }
+
+      // TODO: show instructions to connect
+      // TODO: write to launch.json
+      _logger.printStatus('gdbserver launch successful!!! port: $debugPort');
     } else {
-      // TODO: clean up if-else
       final List<String> command = usesSecureProtocol
           ? <String>['shell', '0', 'execute', package.applicationId]
           : <String>['shell', 'app_launcher', '-s', package.applicationId];
@@ -511,10 +527,10 @@ class TizenDevice extends Device {
       }
     }
 
-    // The device logger becomes available right after the launch unless
-    // native debugging is enabled.
     if (logReader is ForwardingLogReader) {
-      await logReader.start(retry: nativeDebuggingEnabled ? null : 3);
+      // If nativeDebuggingSupported is true, the app will not respond until
+      // it's resumed by the native debugger.
+      await logReader.start(retry: nativeDebuggingSupported ? null : 3);
     }
 
     if (!debuggingOptions.debuggingEnabled) {
