@@ -9,12 +9,14 @@ import 'package:flutter_tizen/tizen_device.dart';
 import 'package:flutter_tizen/tizen_tpk.dart';
 import 'package:flutter_tools/src/base/file_system.dart';
 import 'package:flutter_tools/src/base/logger.dart';
+import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/build_info.dart';
 import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/device_port_forwarder.dart';
 import 'package:test/fake.dart';
 
 import '../src/common.dart';
+import '../src/context.dart';
 import '../src/fake_devices.dart';
 import '../src/fake_process_manager.dart';
 import '../src/fake_tizen_sdk.dart';
@@ -24,12 +26,14 @@ const String _kDeviceId = 'TestDeviceId';
 TizenDevice _createTizenDevice({
   ProcessManager processManager,
   FileSystem fileSystem,
+  Logger logger,
 }) {
   fileSystem ??= MemoryFileSystem.test();
   return TizenDevice(
     _kDeviceId,
     modelId: 'TestModel',
-    logger: BufferLogger.test(),
+    logger: logger ?? BufferLogger.test(),
+    platform: FakePlatform(),
     processManager: processManager ?? FakeProcessManager.any(),
     tizenSdk: FakeTizenSdk(fileSystem),
     fileSystem: fileSystem,
@@ -49,7 +53,7 @@ void main() {
     fileSystem = MemoryFileSystem.test();
   });
 
-  testWithoutContext('TizenDevice.startApp succeeds in debug mode', () async {
+  testUsingContext('TizenDevice.startApp succeeds in debug mode', () async {
     final TizenDevice device = _createTizenDevice(
       processManager: processManager,
       fileSystem: fileSystem,
@@ -83,6 +87,7 @@ void main() {
           '/.tmp_rand0/rand0/$appId.rpm',
           '/home/owner/share/tmp/sdk_tools/$appId.rpm',
         ]),
+        stdout: '1 file(s) pushed.',
       ),
       FakeCommand(
         command: _sdbCommand(<String>['shell', 'app_launcher', '-s', appId]),
@@ -105,6 +110,56 @@ void main() {
     expect(launchResult.started, isTrue);
     expect(launchResult.hasObservatory, isTrue);
     expect(processManager, hasNoRemainingExpectations);
+  }, overrides: <Type, Generator>{
+    FileSystem: () => fileSystem,
+    ProcessManager: () => processManager,
+  });
+
+  testUsingContext('TizenDevice.startApp fails when gdbserver is not found',
+      () async {
+    TizenDevice.nativeDebuggingEnabled = true;
+
+    final TizenDevice device = _createTizenDevice(
+      processManager: processManager,
+      fileSystem: fileSystem,
+      logger: testLogger,
+    );
+    final TizenManifest tizenManifest = _FakeTizenManifest();
+    final TizenTpk tpk = TizenTpk(
+      file: fileSystem.file('app.tpk')..createSync(),
+      manifest: tizenManifest,
+    );
+
+    processManager.addCommands(<FakeCommand>[
+      FakeCommand(
+        command: _sdbCommand(<String>['capability']),
+        stdout: <String>[
+          'cpu_arch:armv7',
+          'secure_protocol:disabled',
+          'platform_version:4.0',
+        ].join('\n'),
+      ),
+      FakeCommand(
+        command: _sdbCommand(<String>['shell', 'ls', '/usr/lib64']),
+        stdout: 'No such file or directory',
+      ),
+    ]);
+
+    final LaunchResult launchResult = await device.startApp(
+      tpk,
+      prebuiltApplication: true,
+      debuggingOptions: DebuggingOptions.enabled(BuildInfo.debug),
+      platformArgs: <String, dynamic>{},
+    );
+
+    expect(launchResult.started, isFalse);
+    expect(
+      testLogger.errorText,
+      contains('gdbserver_7.8.1_armel.tar could not be found.'),
+    );
+  }, overrides: <Type, Generator>{
+    FileSystem: () => fileSystem,
+    ProcessManager: () => processManager,
   });
 
   testWithoutContext(
@@ -219,6 +274,9 @@ class _FakeTizenManifest extends Fake implements TizenManifest {
 
   @override
   String applicationId = 'TestApplication';
+
+  @override
+  String applicationType = 'capp';
 
   @override
   String apiVersion;
