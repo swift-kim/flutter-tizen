@@ -127,6 +127,19 @@ class TizenSdk {
 
   final String defaultGccVersion = '9.2';
 
+  File getGdbExecutable(String arch) {
+    String targetTriple = 'arm-linux-gnueabi';
+    if (arch == 'arm64') {
+      targetTriple = 'aarch64-linux-gnu';
+    } else if (arch == 'x86') {
+      targetTriple = 'i586-linux-gnueabi';
+    }
+    return toolsDirectory
+        .childDirectory('$targetTriple-gdb-8.3.1')
+        .childDirectory('bin')
+        .childFile('$targetTriple-gdb');
+  }
+
   /// On non-Windows, returns the PATH environment variable.
   ///
   /// On Windows, appends the msys2 executables directory to PATH and returns.

@@ -331,7 +331,7 @@ class TizenDevice extends Device {
     final String arch = getTizenBuildArch(architecture);
     final String tarName = 'gdbserver_${gdbVersion}_$arch.tar';
     final File tarArchive =
-        tizenSdk!.toolsDirectory.childDirectory('on-demand').childFile(tarName);
+        _tizenSdk.toolsDirectory.childDirectory('on-demand').childFile(tarName);
     if (!tarArchive.existsSync()) {
       _logger.printError('The file ${tarArchive.path} could not be found.');
       return false;
@@ -443,9 +443,9 @@ class TizenDevice extends Device {
     }
 
     // Build project if target application binary is not specified explicitly.
+    final FlutterProject project = FlutterProject.current();
     if (!prebuiltApplication) {
       _logger.printTrace('Building TPK');
-      final FlutterProject project = FlutterProject.current();
       await tizenBuilder!.buildTpk(
         project: project,
         targetFile: mainPath ?? 'lib/main.dart',
@@ -544,8 +544,16 @@ class TizenDevice extends Device {
       if (debugPort == null) {
         return LaunchResult.failed();
       }
-      // TODO: show instructions to connect
-      // TODO: write to launch.json
+
+      final File gdb = _tizenSdk.getGdbExecutable(architecture);
+      if (!gdb.existsSync()) {
+        _logger.printError('Could not locate the gdb executable.');
+        return LaunchResult.failed();
+      }
+
+      updateLaunchJsonRemoteDebuggingInfo(project, gdb.path, debugPort);
+
+      // TODO: show instructions
       _logger.printStatus('gdbserver launch successful!!! port: $debugPort');
     } else {
       final List<String> command = usesSecureProtocol
@@ -585,7 +593,7 @@ class TizenDevice extends Device {
           return LaunchResult.failed();
         }
         if (!prebuiltApplication) {
-          updateLaunchJsonFile(FlutterProject.current(), observatoryUri);
+          updateLaunchJsonObservatoryInfo(project, observatoryUri);
         }
       }
       return LaunchResult.succeeded(observatoryUri: observatoryUri);
