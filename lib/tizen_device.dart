@@ -11,6 +11,7 @@ import 'package:file/file.dart';
 import 'package:flutter_tools/src/android/android_device.dart';
 import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/logger.dart';
+import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
 import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/base/version.dart';
@@ -40,11 +41,13 @@ class TizenDevice extends Device {
     String id, {
     required String modelId,
     required Logger logger,
-    required ProcessManager processManager,
+    required Platform platform,
     required TizenSdk tizenSdk,
     required FileSystem fileSystem,
+    required ProcessManager processManager,
   })  : _modelId = modelId,
         _logger = logger,
+        _platform = platform,
         _tizenSdk = tizenSdk,
         _fileSystem = fileSystem,
         _processManager = processManager,
@@ -59,6 +62,7 @@ class TizenDevice extends Device {
 
   final String _modelId;
   final Logger _logger;
+  final Platform _platform;
   final TizenSdk _tizenSdk;
   final FileSystem _fileSystem;
   final ProcessManager _processManager;
@@ -544,17 +548,46 @@ class TizenDevice extends Device {
       if (debugPort == null) {
         return LaunchResult.failed();
       }
-
+      final File program = project.directory
+          .childDirectory('build')
+          .childDirectory('tizen')
+          .childDirectory('tpk')
+          .childDirectory('tpkroot')
+          .childDirectory('bin')
+          .childFile('runner');
+      if (!program.existsSync()) {
+        _logger.printError('Could not locate the app executable.');
+        return LaunchResult.failed();
+      }
       final File gdb = _tizenSdk.getGdbExecutable(architecture);
       if (!gdb.existsSync()) {
         _logger.printError('Could not locate the gdb executable.');
         return LaunchResult.failed();
       }
 
-      updateLaunchJsonRemoteDebuggingInfo(project, gdb.path, debugPort);
+      updateLaunchJsonWithRemoteDebuggingInfo(
+        project,
+        programPath: program.path,
+        gdbPath: gdb.path,
+        debugPort: debugPort,
+      );
 
-      // TODO: show instructions
-      _logger.printStatus('gdbserver launch successful!!! port: $debugPort');
+      final String escapeCharacter = _platform.isWindows ? '`' : r'\';
+      _logger.printStatus('''
+gdbserver is listening for connection on port $debugPort.
+
+(1) For CLI debugging, open another console window and launch GDB with this command:
+    ${gdb.path} $escapeCharacter
+      "${program.path}" $escapeCharacter
+      -ex "target remote :$debugPort" -ex "c"
+
+(2) For debugging with VS Code,
+    a. Open the project folder in VS Code.
+    b. Click Run and Debug in the left menu bar, and make sure "$kConfigNameGdb" is selected.
+    c. Click ▷ or press F5 to start debugging.
+
+For detailed instructions, see:
+https://...''');
     } else {
       final List<String> command = usesSecureProtocol
           ? <String>['shell', '0', 'execute', package.applicationId]
@@ -593,7 +626,7 @@ class TizenDevice extends Device {
           return LaunchResult.failed();
         }
         if (!prebuiltApplication) {
-          updateLaunchJsonObservatoryInfo(project, observatoryUri);
+          updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
         }
       }
       return LaunchResult.succeeded(observatoryUri: observatoryUri);

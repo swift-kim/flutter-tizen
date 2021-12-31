@@ -137,7 +137,9 @@ class TizenSdk {
     return toolsDirectory
         .childDirectory('$targetTriple-gdb-8.3.1')
         .childDirectory('bin')
-        .childFile('$targetTriple-gdb');
+        .childFile(_platform.isWindows
+            ? '$targetTriple-gdb.exe'
+            : '$targetTriple-gdb');
   }
 
   /// On non-Windows, returns the PATH environment variable.

@@ -136,7 +136,7 @@ class ForwardingLogReader extends DeviceLogReader {
     return socket;
   }
 
-  /// Starts listening on messages from the device logger.
+  /// Starts receiving messages from the device logger.
   ///
   /// If [retry] is positive and the device logger is not yet ready, the
   /// connection will be retried [retry] times (null is infinity).

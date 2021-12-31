@@ -50,7 +50,7 @@ void main() {
         project.directory.childDirectory('.vscode').childFile('launch.json');
     expect(launchJsonFile, isNot(exists));
 
-    updateLaunchJsonObservatoryInfo(project, observatoryUri);
+    updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
 
     expect(launchJsonFile, exists);
     expect(launchJsonFile.readAsStringSync(), equals(_kLaunchJson));
@@ -66,7 +66,7 @@ void main() {
     launchJsonFile.createSync(recursive: true);
     launchJsonFile.writeAsStringSync(_kEmptyLaunchJson);
 
-    updateLaunchJsonObservatoryInfo(project, observatoryUri);
+    updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
 
     expect(launchJsonFile, exists);
     expect(launchJsonFile.readAsStringSync(), equals(_kLaunchJson));

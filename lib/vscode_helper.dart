@@ -56,13 +56,13 @@ Map<Object?, Object?> _parseLaunchJson(File launchJsonFile) {
   return decoded;
 }
 
-void updateLaunchJsonObservatoryInfo(
+void updateLaunchJsonWithObservatoryInfo(
   FlutterProject project,
   Uri observatoryUri,
 ) {
   final FlutterProject? parentProject = _findParentProject(project);
   if (parentProject != null) {
-    updateLaunchJsonObservatoryInfo(parentProject, observatoryUri);
+    updateLaunchJsonWithObservatoryInfo(parentProject, observatoryUri);
   }
 
   final File launchJsonFile =
@@ -83,10 +83,9 @@ void updateLaunchJsonObservatoryInfo(
     if (config is! Map || config['name'] != kConfigNameAttach) {
       continue;
     }
-    final String appPath = project.hasExampleApp
+    config['cwd'] = project.hasExampleApp
         ? r'${workspaceFolder}/example'
         : r'${workspaceFolder}';
-    config['cwd'] = appPath;
     config['observatoryUri'] = observatoryUri.toString();
   }
 
@@ -96,14 +95,20 @@ void updateLaunchJsonObservatoryInfo(
     ..writeAsStringSync(encoder.convert(decoded));
 }
 
-void updateLaunchJsonRemoteDebuggingInfo(
-  FlutterProject project,
-  String gdbPath,
-  int debugPort,
-) {
+void updateLaunchJsonWithRemoteDebuggingInfo(
+  FlutterProject project, {
+  required String programPath,
+  required String gdbPath,
+  required int debugPort,
+}) {
   final FlutterProject? parentProject = _findParentProject(project);
   if (parentProject != null) {
-    updateLaunchJsonRemoteDebuggingInfo(parentProject, gdbPath, debugPort);
+    updateLaunchJsonWithRemoteDebuggingInfo(
+      parentProject,
+      programPath: programPath,
+      gdbPath: gdbPath,
+      debugPort: debugPort,
+    );
   }
 
   final File launchJsonFile =
@@ -126,11 +131,10 @@ void updateLaunchJsonRemoteDebuggingInfo(
     if (config is! Map || config['name'] != kConfigNameGdb) {
       continue;
     }
-    final String appPath = project.hasExampleApp
+    config['cwd'] = project.hasExampleApp
         ? r'${workspaceFolder}/example'
         : r'${workspaceFolder}';
-    config['cwd'] = appPath;
-    config['program'] = '$appPath/build/tizen/tpk/tpkroot/bin/runner';
+    config['program'] = programPath;
     config['miDebuggerPath'] = gdbPath;
     config['miDebuggerServerAddress'] = ':$debugPort';
   }
