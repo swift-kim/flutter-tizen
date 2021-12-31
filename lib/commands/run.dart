@@ -18,18 +18,17 @@ class TizenRunCommand extends RunCommand
   TizenRunCommand({bool verboseHelp = false})
       : super(verboseHelp: verboseHelp) {
     argParser.addFlag(
-      'tizen-native-debugging',
-      defaultsTo: false,
-      help: 'Enable debugging of native code in a Tizen app by running it '
-          'under gdbserver. This feature is currently experimental.',
+      'debug-native',
+      negatable: false,
+      help: 'Enable debugging of native code within the app (Tizen only).',
     );
   }
 
   @override
   Future<FlutterCommandResult> runCommand() async {
-    if (boolArg('tizen-native-debugging')) {
+    if (boolArg('debug-native')) {
       if (getBuildMode() != BuildMode.debug) {
-        throwToolExit('Native debugging is only supported in debug mode.');
+        throwToolExit('Native debugging is supported in debug mode only.');
       }
       TizenDevice.nativeDebuggingEnabled = true;
     }

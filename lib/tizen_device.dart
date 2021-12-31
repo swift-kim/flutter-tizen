@@ -327,7 +327,7 @@ class TizenDevice extends Device {
     if (platformVersion != null && platformVersion >= Version(6, 0, 0)) {
       gdbVersion = '8.3.1';
     }
-    // TODO: i386/i586
+    // TODO: i386/i586 (gdbserver built from source)
     final String arch = getTizenBuildArch(architecture);
     final String tarName = 'gdbserver_${gdbVersion}_$arch.tar';
     final File tarArchive =
@@ -455,9 +455,19 @@ class TizenDevice extends Device {
           deviceProfile: deviceProfile,
         ),
       );
-      // Package has been built, so we can get the updated application id and
-      // activity name from the tpk.
       package = TizenTpk.fromProject(project);
+    }
+
+    if (nativeDebuggingEnabled) {
+      if (package.isDotnet) {
+        _logger.printError('Native debugging error: Not supported app type.');
+        return LaunchResult.failed();
+      } else if (usesSecureProtocol) {
+        _logger.printError('Native debugging error: Not supported device.');
+        return LaunchResult.failed();
+      } else if (!await _installGdbServer()) {
+        return LaunchResult.failed();
+      }
     }
 
     _logger.printTrace("Stopping app '${package.name}' on $name.");
@@ -528,17 +538,7 @@ class TizenDevice extends Device {
     // See: https://github.com/flutter-tizen/flutter-tizen/pull/19
     await _writeEngineArguments(engineArgs, '${package.applicationId}.rpm');
 
-    bool nativeDebuggingSupported = false;
     if (nativeDebuggingEnabled) {
-      if (package.isDotnet) {
-        _logger.printError('Native debugging is not supported by C# projects.');
-      } else if (usesSecureProtocol) {
-        _logger.printError('Native debugging is not supported by this device.');
-      } else if (await _installGdbServer()) {
-        nativeDebuggingSupported = true;
-      }
-    }
-    if (nativeDebuggingEnabled && nativeDebuggingSupported) {
       final int? debugPort =
           await _startAppUnderGdbServer(package.applicationId);
       if (debugPort == null) {
@@ -559,9 +559,9 @@ class TizenDevice extends Device {
     }
 
     if (logReader is ForwardingLogReader) {
-      // If nativeDebuggingSupported is true, the app will not respond until
-      // it's resumed by the native debugger.
-      await logReader.start(retry: nativeDebuggingSupported ? null : 3);
+      // If nativeDebuggingEnabled is true, the app will not respond until
+      // it is resumed by the native debugger.
+      await logReader.start(retry: nativeDebuggingEnabled ? null : 3);
     }
 
     if (!debuggingOptions.debuggingEnabled) {
