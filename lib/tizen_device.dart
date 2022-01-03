@@ -419,12 +419,17 @@ class TizenDevice extends Device {
         .listen((String line) {
       completer.completeError(line);
     });
+
+    final Status status = _logger.startProgress('Starting gdbserver...');
     try {
       await completer.future.timeout(const Duration(seconds: 10));
     } on Exception catch (error) {
+      status.stop();
       _logger.printError('Launch failed: $error');
       return null;
     }
+    status.stop();
+
     return debugPort;
   }
 
@@ -543,6 +548,7 @@ class TizenDevice extends Device {
     await _writeEngineArguments(engineArgs, '${package.applicationId}.rpm');
 
     if (nativeDebuggingEnabled) {
+      // Start gdbserver and wait for a connection.
       final int? debugPort =
           await _startAppUnderGdbServer(package.applicationId);
       if (debugPort == null) {
@@ -576,19 +582,23 @@ class TizenDevice extends Device {
       _logger.printStatus('''
 gdbserver is listening for connection on port $debugPort.
 
-(1) For CLI debugging, open another console window and launch GDB with this command:
+(a) For CLI debugging:
+    1. Open another console window.
+    2. Launch GDB with the following command.
     ${gdb.path} $escapeCharacter
       "${program.path}" $escapeCharacter
-      -ex "target remote :$debugPort" -ex "c"
+      -ex "target remote :$debugPort" $escapeCharacter
+      -ex "c"
 
-(2) For debugging with VS Code,
-    a. Open the project folder in VS Code.
-    b. Click Run and Debug in the left menu bar, and make sure "$kConfigNameGdb" is selected.
-    c. Click ▷ or press F5 to start debugging.
+(b) For debugging with VS Code:
+    1. Open the project folder in VS Code.
+    2. Click the Run and Debug icon in the left menu bar, and make sure "$kConfigNameGdb" is selected.
+    3. Click ▷ or press F5 to start debugging.
 
 For detailed instructions, see:
-https://...''');
+https://github.com/flutter-tizen/flutter-tizen/wiki/Debugging-app's-native-code''');
     } else {
+      // Launch the app normally.
       final List<String> command = usesSecureProtocol
           ? <String>['shell', '0', 'execute', package.applicationId]
           : <String>['shell', 'app_launcher', '-s', package.applicationId];
