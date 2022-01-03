@@ -10,6 +10,7 @@ import 'package:file/file.dart';
 import 'package:flutter_tools/src/android/android_device_discovery.dart';
 import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/logger.dart';
+import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
 import 'package:flutter_tools/src/device.dart';
 import 'package:process/process.dart';
@@ -26,11 +27,13 @@ class TizenDeviceDiscovery extends PollingDeviceDiscovery {
     required TizenSdk? tizenSdk,
     required TizenWorkflow tizenWorkflow,
     required Logger logger,
+    required Platform platform,
     required FileSystem fileSystem,
     required ProcessManager processManager,
   })  : _tizenSdk = tizenSdk,
         _tizenWorkflow = tizenWorkflow,
         _logger = logger,
+        _platform = platform,
         _fileSystem = fileSystem,
         _processManager = processManager,
         _processUtils =
@@ -40,6 +43,7 @@ class TizenDeviceDiscovery extends PollingDeviceDiscovery {
   final TizenSdk? _tizenSdk;
   final TizenWorkflow _tizenWorkflow;
   final Logger _logger;
+  final Platform _platform;
   final FileSystem _fileSystem;
   final ProcessManager _processManager;
   final ProcessUtils _processUtils;
@@ -88,9 +92,10 @@ class TizenDeviceDiscovery extends PollingDeviceDiscovery {
         deviceId,
         modelId: deviceModel,
         logger: _logger,
-        processManager: _processManager,
+        platform: _platform,
         tizenSdk: _tizenSdk!,
         fileSystem: _fileSystem,
+        processManager: _processManager,
       );
 
       // Occasionally sdb detects an Android device as a Tizen device.
