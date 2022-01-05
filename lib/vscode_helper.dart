@@ -122,9 +122,13 @@ void updateLaunchJsonWithRemoteDebuggingInfo(
       'name': kConfigNameGdb,
       'request': 'launch',
       'type': 'cppdbg',
-      'externalConsole': 'false',
+      'externalConsole': false,
       'MIMode': 'gdb',
-      'sourceFileMap': <String, String>{},
+      'sourceFileMap': <String, Object>{},
+      'symbolLoadInfo': <String, Object>{
+        'loadAll': false,
+        'exceptionList': 'libflutter*.so'
+      },
     });
   }
   for (final Object? config in configs) {
