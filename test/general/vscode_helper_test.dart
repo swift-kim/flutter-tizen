@@ -35,10 +35,11 @@ const String _kEmptyLaunchJson = r'''
 }''';
 
 void main() {
+  FileSystem fileSystem;
   FlutterProject project;
 
   setUp(() {
-    final FileSystem fileSystem = MemoryFileSystem.test();
+    fileSystem = MemoryFileSystem.test();
     project = FlutterProject.fromDirectoryTest(fileSystem.currentDirectory);
   });
 
@@ -78,7 +79,7 @@ void main() {
 
     updateLaunchJsonWithRemoteDebuggingInfo(
       project,
-      programPath: 'test_program',
+      program: fileSystem.file('test_program'),
       gdbPath: '/path/to/gdb',
       debugPort: 12345,
     );

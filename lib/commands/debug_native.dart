@@ -25,8 +25,8 @@ import '../tizen_sdk.dart';
 import '../tizen_tpk.dart';
 import '../vscode_helper.dart';
 
-class TizenDebugNativeCommand extends FlutterCommand {
-  TizenDebugNativeCommand({
+class DebugNativeCommand extends FlutterCommand {
+  DebugNativeCommand({
     Platform platform,
     ProcessManager processManager,
     TizenSdk tizenSdk,

@@ -119,14 +119,14 @@ Future<void> main(List<String> args) async {
       ScreenshotCommand(),
       SymbolizeCommand(stdio: globals.stdio, fileSystem: globals.fs),
       // Commands extended for Tizen.
-      TizenBuildCommand(verboseHelp: verboseHelp),
-      TizenCleanCommand(verbose: verbose),
-      TizenCreateCommand(verboseHelp: verboseHelp),
-      TizenDebugNativeCommand(
+      DebugNativeCommand(
         platform: globals.platform,
         processManager: globals.processManager,
         tizenSdk: tizenSdk,
       ),
+      TizenBuildCommand(verboseHelp: verboseHelp),
+      TizenCleanCommand(verbose: verbose),
+      TizenCreateCommand(verboseHelp: verboseHelp),
       TizenDriveCommand(
         verboseHelp: verboseHelp,
         fileSystem: globals.fs,

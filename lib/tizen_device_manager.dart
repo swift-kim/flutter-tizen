@@ -38,7 +38,6 @@ class TizenDeviceManager extends FlutterDeviceManager {
           tizenSdk: tizenSdk,
           tizenWorkflow: tizenWorkflow,
           logger: logger,
-          platform: platform,
           fileSystem: fileSystem,
           processManager: processManager,
         ),

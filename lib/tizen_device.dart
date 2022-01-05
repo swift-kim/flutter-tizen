@@ -11,7 +11,6 @@ import 'package:file/file.dart';
 import 'package:flutter_tools/src/android/android_device.dart';
 import 'package:flutter_tools/src/base/common.dart';
 import 'package:flutter_tools/src/base/logger.dart';
-import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
 import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/base/version.dart';
@@ -41,16 +40,13 @@ class TizenDevice extends Device {
     String id, {
     required String modelId,
     required Logger logger,
-    required Platform platform,
+    required ProcessManager processManager,
     required TizenSdk tizenSdk,
     required FileSystem fileSystem,
-    required ProcessManager processManager,
   })  : _modelId = modelId,
         _logger = logger,
-        _platform = platform,
         _tizenSdk = tizenSdk,
         _fileSystem = fileSystem,
-        _processManager = processManager,
         _processUtils =
             ProcessUtils(logger: logger, processManager: processManager),
         super(id,
@@ -58,14 +54,10 @@ class TizenDevice extends Device {
             platformType: PlatformType.custom,
             ephemeral: true);
 
-  static bool nativeDebuggingEnabled = false;
-
   final String _modelId;
   final Logger _logger;
-  final Platform _platform;
   final TizenSdk _tizenSdk;
   final FileSystem _fileSystem;
-  final ProcessManager _processManager;
   final ProcessUtils _processUtils;
 
   Map<String, String>? _capabilities;
@@ -344,9 +336,9 @@ class TizenDevice extends Device {
     }
 
     // Build project if target application binary is not specified explicitly.
-    final FlutterProject project = FlutterProject.current();
     if (!prebuiltApplication) {
       _logger.printTrace('Building TPK');
+      final FlutterProject project = FlutterProject.current();
       await tizenBuilder!.buildTpk(
         project: project,
         targetFile: mainPath ?? 'lib/main.dart',
@@ -432,10 +424,11 @@ class TizenDevice extends Device {
         : <String>['shell', 'app_launcher', '-e', package.applicationId];
     final String stdout = (await runSdbAsync(command)).stdout;
     if (!stdout.contains('successfully launched')) {
-      _logger.printError(stdout);
+      _logger.printError(stdout.trim());
       return LaunchResult.failed();
     }
 
+    // The device logger becomes available right after the launch.
     if (logReader is ForwardingLogReader) {
       await logReader.start();
     }
@@ -461,6 +454,7 @@ class TizenDevice extends Device {
           return LaunchResult.failed();
         }
         if (!prebuiltApplication) {
+          final FlutterProject project = FlutterProject.current();
           updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
         }
       }
