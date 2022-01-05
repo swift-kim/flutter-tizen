@@ -216,29 +216,29 @@ See $kWikiUrl for detailed usage.''');
 
     _registerSignalHandlers();
 
-    // _terminal.singleCharMode = true;
-    // _subscription = _terminal.keystrokes.listen((String command) async {
-    //   command = command.trim();
+    _terminal.singleCharMode = true;
+    _subscription = _terminal.keystrokes.listen((String command) async {
+      command = command.trim();
 
-    //   switch (command) {
-    //     case 'r':
-    await go(<String>[
-      gdb.path,
-      program.path,
-      '-ex',
-      'set auto-solib-add off',
-      '-ex',
-      'target remote :$debugPort',
-      '-ex',
-      'shared /opt/usr/globalapps',
-    ]);
-    //       break;
-    //     case 'q':
-    //     case 'Q':
-    //       stop();
-    //       break;
-    //   }
-    // });
+      switch (command) {
+        case 'r':
+          await go(<String>[
+            gdb.path,
+            program.path,
+            '-ex',
+            'set auto-solib-add off',
+            '-ex',
+            'target remote :$debugPort',
+            '-ex',
+            'shared /opt/usr/globalapps',
+          ]);
+          break;
+        case 'q':
+        case 'Q':
+          stop();
+          break;
+      }
+    });
 
     final int exitCode = await _finished.future;
     if (exitCode != 0) {
@@ -249,7 +249,8 @@ See $kWikiUrl for detailed usage.''');
 
   Future<void> go(List<String> command) async {
     await _subscription?.cancel();
-    final Process process = await _processManager.start(command);
+    final Process process =
+        await _processManager.start(command, includeParentEnvironment: true);
     // _subscription = _terminal.keystrokes.listen((String stroke) async {
     //   process.stdin.write(stroke);
     // });
@@ -258,13 +259,13 @@ See $kWikiUrl for detailed usage.''');
     // stdin.echoMode = false;
     // stdin.lineMode = false;
 
-    // _terminal.singleCharMode = false;
-    // _terminal.keystrokes.listen((String command) async {
-    //   process.stdin.write(command);
-    // });
+    _terminal.singleCharMode = false;
+
+    // terminal.dart
+    unawaited(process.stdin
+        .addStream(_terminal.keystrokes.transform(const AsciiEncoder())));
 
     // android_workflow.dart
-    process.stdin.addStream(globals.stdio.stdin);
     await Future.wait<void>(<Future<void>>[
       globals.stdio.addStdoutStream(process.stdout),
       globals.stdio.addStderrStream(process.stderr),
