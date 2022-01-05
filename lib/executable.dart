@@ -43,6 +43,7 @@ import 'build_targets/package.dart';
 import 'commands/build.dart';
 import 'commands/clean.dart';
 import 'commands/create.dart';
+import 'commands/debug_native.dart';
 import 'commands/drive.dart';
 import 'commands/precache.dart';
 import 'commands/run.dart';
@@ -121,6 +122,11 @@ Future<void> main(List<String> args) async {
       TizenBuildCommand(verboseHelp: verboseHelp),
       TizenCleanCommand(verbose: verbose),
       TizenCreateCommand(verboseHelp: verboseHelp),
+      TizenDebugNativeCommand(
+        platform: globals.platform,
+        processManager: globals.processManager,
+        tizenSdk: tizenSdk,
+      ),
       TizenDriveCommand(
         verboseHelp: verboseHelp,
         fileSystem: globals.fs,

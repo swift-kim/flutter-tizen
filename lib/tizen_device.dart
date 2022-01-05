@@ -72,7 +72,7 @@ class TizenDevice extends Device {
   DeviceLogReader? _logReader;
   DevicePortForwarder? _portForwarder;
 
-  List<String> _sdbCommand(List<String> args) {
+  List<String> sdbCommand(List<String> args) {
     return <String>[_tizenSdk.sdb.path, '-s', id, ...args];
   }
 
@@ -80,7 +80,7 @@ class TizenDevice extends Device {
     List<String> params, {
     bool checked = true,
   }) {
-    return _processUtils.runSync(_sdbCommand(params), throwOnError: checked);
+    return _processUtils.runSync(sdbCommand(params), throwOnError: checked);
   }
 
   /// See: [AndroidDevice.runAdbCheckedAsync] in `android_device.dart`
@@ -88,7 +88,7 @@ class TizenDevice extends Device {
     List<String> params, {
     bool checked = true,
   }) async {
-    return _processUtils.run(_sdbCommand(params), throwOnError: checked);
+    return _processUtils.run(sdbCommand(params), throwOnError: checked);
   }
 
   String getCapability(String name) {
@@ -325,119 +325,6 @@ class TizenDevice extends Device {
     }
   }
 
-  Future<bool> _installGdbServer() async {
-    final Version? platformVersion = Version.parse(_platformVersion);
-    String gdbServerVersion = '8.3.1';
-    if (platformVersion != null && platformVersion < Version(6, 0, 0)) {
-      gdbServerVersion = '7.8.1';
-    }
-    final String arch = getTizenBuildArch(architecture, platformVersion);
-    final String tarName = 'gdbserver_${gdbServerVersion}_$arch.tar';
-    final File tarArchive =
-        _tizenSdk.toolsDirectory.childDirectory('on-demand').childFile(tarName);
-    if (!tarArchive.existsSync()) {
-      _logger.printError('The file ${tarArchive.path} could not be found.');
-      return false;
-    }
-    _logger.printTrace('Installing $tarName to $name.');
-
-    const String sdkToolsPath = '/home/owner/share/tmp/sdk_tools';
-    final String remoteArchivePath = '$sdkToolsPath/$tarName';
-    try {
-      final RunResult mkdirResult = await runSdbAsync(<String>[
-        'shell',
-        'mkdir',
-        '-p',
-        sdkToolsPath,
-      ]);
-      if (mkdirResult.stdout.isNotEmpty) {
-        mkdirResult.throwException(mkdirResult.stdout);
-      }
-      final RunResult pushResult = await runSdbAsync(<String>[
-        'push',
-        tarArchive.path,
-        remoteArchivePath,
-      ]);
-      if (!pushResult.stdout.contains('file(s) pushed')) {
-        pushResult.throwException(pushResult.stdout);
-      }
-      final RunResult extractResult = await runSdbAsync(<String>[
-        'shell',
-        'tar',
-        '-xf',
-        remoteArchivePath,
-        '-C',
-        sdkToolsPath
-      ]);
-      if (extractResult.stdout.isNotEmpty) {
-        extractResult.throwException(extractResult.stdout);
-      }
-    } on ProcessException catch (error) {
-      _logger.printError('Error installing gdbserver: $error');
-      return false;
-    }
-    // Remove a temporary file.
-    await runSdbAsync(<String>[
-      'shell',
-      'rm',
-      remoteArchivePath,
-    ], checked: false);
-
-    return true;
-  }
-
-  Future<void> _launchGdbServer(String appId, int debugPort, String pid) async {
-    final List<String> command = _sdbCommand(<String>[
-      'launch',
-      '-a',
-      '"$appId"',
-      '-p',
-      '-e',
-      '-m',
-      'debug',
-      '-P',
-      '$debugPort',
-      '-attach',
-      pid,
-    ]);
-    final Process process = await _processManager.start(command);
-
-    final Completer<void> completer = Completer<void>();
-    final StreamSubscription<String> stdoutSubscription = process.stdout
-        .transform<String>(const Utf8Decoder())
-        .transform<String>(const LineSplitter())
-        .listen((String line) {
-      if (line.contains("Can't bind address") ||
-          line.contains('Cannot attach to process')) {
-        completer.completeError(line);
-      } else if (line.contains('Listening on port')) {
-        completer.complete();
-      } else {
-        // For debugging purpose.
-        // Remove this when we obtain enough information on corner cases.
-        _logger.printError(line);
-      }
-    });
-    final StreamSubscription<String> stderrSubscription = process.stderr
-        .transform<String>(const Utf8Decoder())
-        .transform<String>(const LineSplitter())
-        .listen((String line) {
-      completer.completeError(line);
-    });
-
-    // try {
-    //   await completer.future.timeout(const Duration(seconds: 10));
-    // } on Exception catch (error) {
-    //   _logger.printError('Could not launch gdbserver: $error');
-    //   await stdoutSubscription.cancel();
-    //   await stderrSubscription.cancel();
-    //   rethrow;
-    // }
-    await completer.future.timeout(const Duration(seconds: 15));
-    await stdoutSubscription.cancel();
-    await stderrSubscription.cancel();
-  }
-
   /// Source: [AndroidDevice.startApp] in `android_device.dart`
   @override
   Future<LaunchResult> startApp(
@@ -470,18 +357,6 @@ class TizenDevice extends Device {
         ),
       );
       package = TizenTpk.fromProject(project);
-    }
-
-    if (nativeDebuggingEnabled) {
-      if (package.isDotnet) {
-        _logger.printError('Native debugging error: Not supported app type.');
-        return LaunchResult.failed();
-      } else if (usesSecureProtocol) {
-        _logger.printError('Native debugging error: Not supported device.');
-        return LaunchResult.failed();
-      } else if (!await _installGdbServer()) {
-        return LaunchResult.failed();
-      }
     }
 
     _logger.printTrace("Stopping app '${package.name}' on $name.");
@@ -552,22 +427,12 @@ class TizenDevice extends Device {
     // See: https://github.com/flutter-tizen/flutter-tizen/pull/19
     await _writeEngineArguments(engineArgs, '${package.applicationId}.rpm');
 
-    List<String> command;
-    if (usesSecureProtocol) {
-      command = <String>['shell', '0', 'execute', package.applicationId];
-    } else {
-      // The gdbserver can only properly attach to an app launched without
-      // loader process.
-      command = nativeDebuggingEnabled
-          ? <String>['shell', 'app_launcher', '-e', package.applicationId]
-          : <String>['shell', 'app_launcher', '-s', package.applicationId];
-    }
-    final RunResult result = await runSdbAsync(command);
-
-    final RegExp pattern = RegExp('successfully launched pid = ([0-9]+)');
-    final Match? match = pattern.firstMatch(result.stdout);
-    if (match == null) {
-      _logger.printError(result.stdout);
+    final List<String> command = usesSecureProtocol
+        ? <String>['shell', '0', 'execute', package.applicationId]
+        : <String>['shell', 'app_launcher', '-e', package.applicationId];
+    final String stdout = (await runSdbAsync(command)).stdout;
+    if (!stdout.contains('successfully launched')) {
+      _logger.printError(stdout);
       return LaunchResult.failed();
     }
 
@@ -583,8 +448,8 @@ class TizenDevice extends Device {
     // device has printed "Observatory is listening on...".
     _logger.printTrace('Waiting for observatory port to be available...');
 
-    Uri? observatoryUri;
     try {
+      Uri? observatoryUri;
       if (debuggingOptions.buildInfo.isDebug ||
           debuggingOptions.buildInfo.isProfile) {
         observatoryUri = await observatoryDiscovery?.uri;
@@ -595,69 +460,17 @@ class TizenDevice extends Device {
           );
           return LaunchResult.failed();
         }
+        if (!prebuiltApplication) {
+          updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
+        }
       }
+      return LaunchResult.succeeded(observatoryUri: observatoryUri);
     } on Exception catch (error) {
       _logger.printError('Error waiting for a debug connection: $error');
       return LaunchResult.failed();
     } finally {
       await observatoryDiscovery?.cancel();
     }
-
-    if (!prebuiltApplication && observatoryUri != null) {
-      updateLaunchJsonWithObservatoryInfo(project, observatoryUri);
-    }
-
-    if (nativeDebuggingEnabled) {
-      // Forward a port to allow communication between gdb and gdbserver.
-      final int debugPort = await globals.os.findFreePort();
-      await portForwarder.forward(debugPort, hostPort: debugPort);
-
-      final String pid = match.group(1)!;
-      unawaited(_launchGdbServer(package.applicationId, debugPort, pid).then(
-          (void _) {
-        final File program = project.directory
-            .childDirectory('build')
-            .childDirectory('tizen')
-            .childDirectory('tpk')
-            .childDirectory('tpkroot')
-            .childDirectory('bin')
-            .childFile('runner');
-        final File gdb = _tizenSdk.getGdbExecutable(architecture);
-
-        updateLaunchJsonWithRemoteDebuggingInfo(
-          project,
-          program: program,
-          gdbPath: gdb.path,
-          debugPort: debugPort,
-        );
-
-        final String escapeCharacter = _platform.isWindows ? '`' : r'\';
-        _logger.printStatus('''
-gdbserver is listening for connection on port $debugPort.
-
-(a) For CLI debugging:
-    1. Open another console window.
-    2. Launch GDB with the following command.
-    ${gdb.path} $escapeCharacter
-      "${program.path}" $escapeCharacter
-      -ex "set pagenation off"
-      -ex "set auto-solib-add off"
-      -ex "target remote :$debugPort" $escapeCharacter
-      -ex "shared /opt/usr/globalapps"
-
-(b) For debugging with VS Code:
-    1. Open the project folder in VS Code.
-    2. Click the Run and Debug icon in the left menu bar, and make sure "$kConfigNameGdb" is selected.
-    3. Click ▷ or press F5 to start debugging.
-
-For detailed instructions, see:
-https://github.com/flutter-tizen/flutter-tizen/wiki/Debugging-app's-native-code''');
-      }, onError: (Object error) {
-        _logger.printError('Could not launch gdbserver: $error');
-      }));
-    }
-
-    return LaunchResult.succeeded(observatoryUri: observatoryUri);
   }
 
   @override
