@@ -122,6 +122,8 @@ Future<void> main(List<String> args) async {
       DebugNativeCommand(
         platform: globals.platform,
         processManager: globals.processManager,
+        terminal: globals.terminal,
+        signals: globals.signals,
         tizenSdk: tizenSdk,
       ),
       TizenBuildCommand(verboseHelp: verboseHelp),

@@ -10,8 +10,11 @@ import 'dart:io';
 
 import 'package:file/file.dart';
 import 'package:flutter_tools/src/base/common.dart';
+import 'package:flutter_tools/src/base/io.dart';
 import 'package:flutter_tools/src/base/platform.dart';
 import 'package:flutter_tools/src/base/process.dart';
+import 'package:flutter_tools/src/base/signals.dart';
+import 'package:flutter_tools/src/base/terminal.dart';
 import 'package:flutter_tools/src/convert.dart';
 import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
@@ -32,9 +35,13 @@ class DebugNativeCommand extends FlutterCommand {
   DebugNativeCommand({
     @required Platform platform,
     @required ProcessManager processManager,
+    @required Terminal terminal,
+    @required Signals signals,
     @required TizenSdk tizenSdk,
   })  : _platform = platform,
         _processManager = processManager,
+        _terminal = terminal,
+        _signals = signals,
         _tizenSdk = tizenSdk {
     requiresPubspecYaml();
   }
@@ -50,11 +57,14 @@ class DebugNativeCommand extends FlutterCommand {
 
   final Platform _platform;
   final ProcessManager _processManager;
+  final Terminal _terminal;
+  final Signals _signals;
   final TizenSdk _tizenSdk;
 
   TizenDevice _device;
   FlutterProject _project;
   TizenTpk _package;
+  StreamSubscription<void> _subscription;
 
   @override
   Future<void> validateCommand() async {
@@ -204,8 +214,109 @@ gdbserver is listening for connection on port $debugPort.
 
 See $kWikiUrl for detailed usage.''');
 
-    await Future<void>.delayed(Duration(hours: 1));
+    registerSignalHandlers();
 
+    _terminal.singleCharMode = true;
+
+    _subscription = _terminal.keystrokes.listen((String command) async {
+      command = command.trim();
+
+      switch (command) {
+        case 'a':
+          print('a');
+          break;
+        case 'r':
+          _terminal.singleCharMode = false;
+          // await Process.run(
+          //   gdb.path,
+          //   <String>[
+          //     program.path,
+          //     '-ex',
+          //     'set auto-solib-add off',
+          //     '-ex',
+          //     'target remote :$debugPort',
+          //     '-ex',
+          //     'shared /opt/usr/globalapps',
+          //   ],
+          //   runInShell: true,
+          // );
+          // await _subscription.cancel();
+          await go(<String>[
+            gdb.path,
+            program.path,
+            '-ex',
+            'set auto-solib-add off',
+            '-ex',
+            'target remote :$debugPort',
+            '-ex',
+            'shared /opt/usr/globalapps',
+          ]);
+          break;
+        case 'q':
+        case 'Q':
+          stop();
+          break;
+      }
+    });
+
+    final int exitCode = await _finished.future;
+    if (exitCode != 0) {
+      return FlutterCommandResult.fail();
+    }
     return FlutterCommandResult.success();
+  }
+
+  Future<void> go(List<String> command) async {
+    await _subscription.cancel();
+    final Process process = await _processManager.start(command);
+    // _subscription = _terminal.keystrokes.listen((String stroke) async {
+    //   process.stdin.write(stroke);
+    // });
+
+    final Stdin stdin = globals.stdio.stdin as Stdin;
+    stdin.echoMode = true;
+    stdin.lineMode = false;
+
+    // stdin.pipe(streamConsumer)
+    // process.stdin.addStream(globals.stdio.stdin);
+
+    // _subscription = globals.stdio.stdin.listen((List<int> event) {
+    //   process.stdin.write(event);
+    // });
+    process.stdout.listen((List<int> event) {
+      // print('out');
+      globals.stdio.stdout.write(event);
+    });
+    // stderr
+  }
+
+  final Completer<int> _finished = Completer<int>();
+
+  final Map<ProcessSignal, Object> _signalTokens = <ProcessSignal, Object>{};
+
+  void _addSignalHandler(ProcessSignal signal, SignalHandler handler) {
+    _signalTokens[signal] = _signals.addHandler(signal, handler);
+  }
+
+  Future<void> _cleanUp(ProcessSignal signal) async {
+    _terminal.singleCharMode = false;
+    await _subscription?.cancel();
+    globals.printStatus('Interrupted');
+  }
+
+  void registerSignalHandlers() {
+    _addSignalHandler(ProcessSignal.sigint, _cleanUp);
+    _addSignalHandler(ProcessSignal.sigterm, _cleanUp);
+  }
+
+  void stop() {
+    for (final MapEntry<ProcessSignal, Object> entry in _signalTokens.entries) {
+      _signals.removeHandler(entry.key, entry.value);
+    }
+    _signalTokens.clear();
+    _subscription?.cancel();
+
+    globals.printStatus('Bye!');
+    _finished.complete(0);
   }
 }
