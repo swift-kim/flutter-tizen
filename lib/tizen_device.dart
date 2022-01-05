@@ -538,6 +538,67 @@ class TizenDevice extends Device {
         flutterProject.directory.childDirectory('tizen').existsSync();
   }
 
+  Future<bool> installGdbServer() async {
+    final Version? platformVersion = Version.parse(_platformVersion);
+    String gdbServerVersion = '8.3.1';
+    if (platformVersion != null && platformVersion < Version(6, 0, 0)) {
+      gdbServerVersion = '7.8.1';
+    }
+    final String arch = getTizenBuildArch(architecture, platformVersion);
+    final String tarName = 'gdbserver_${gdbServerVersion}_$arch.tar';
+    final File tarArchive =
+        _tizenSdk.toolsDirectory.childDirectory('on-demand').childFile(tarName);
+    if (!tarArchive.existsSync()) {
+      globals.printError('The file ${tarArchive.path} could not be found.');
+      return false;
+    }
+    globals.printTrace('Installing $tarName to $name.');
+
+    const String sdkToolsPath = '/home/owner/share/tmp/sdk_tools';
+    final String remoteArchivePath = '$sdkToolsPath/$tarName';
+    try {
+      final RunResult mkdirResult = await runSdbAsync(<String>[
+        'shell',
+        'mkdir',
+        '-p',
+        sdkToolsPath,
+      ]);
+      if (mkdirResult.stdout.isNotEmpty) {
+        mkdirResult.throwException(mkdirResult.stdout);
+      }
+      final RunResult pushResult = await runSdbAsync(<String>[
+        'push',
+        tarArchive.path,
+        remoteArchivePath,
+      ]);
+      if (!pushResult.stdout.contains('file(s) pushed')) {
+        pushResult.throwException(pushResult.stdout);
+      }
+      final RunResult extractResult = await runSdbAsync(<String>[
+        'shell',
+        'tar',
+        '-xf',
+        remoteArchivePath,
+        '-C',
+        sdkToolsPath
+      ]);
+      if (extractResult.stdout.isNotEmpty) {
+        extractResult.throwException(extractResult.stdout);
+      }
+    } on ProcessException catch (error) {
+      globals.printError('Error installing gdbserver: $error');
+      return false;
+    }
+    // Remove a temporary file.
+    await runSdbAsync(<String>[
+      'shell',
+      'rm',
+      remoteArchivePath,
+    ], checked: false);
+
+    return true;
+  }
+
   /// Source: [AndroidDevice.dispose] in `android_device.dart`
   @override
   Future<void> dispose() async {

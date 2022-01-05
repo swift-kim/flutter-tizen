@@ -92,9 +92,13 @@ void main() {
             "name": "flutter-tizen: gdb",
             "request": "launch",
             "type": "cppdbg",
-            "externalConsole": "false",
+            "externalConsole": false,
             "MIMode": "gdb",
             "sourceFileMap": {},
+            "symbolLoadInfo": {
+                "loadAll": false,
+                "exceptionList": "libflutter*.so"
+            },
             "cwd": "${workspaceFolder}",
             "program": "test_program",
             "miDebuggerPath": "/path/to/gdb",
