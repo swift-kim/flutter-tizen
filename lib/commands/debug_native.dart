@@ -214,50 +214,31 @@ gdbserver is listening for connection on port $debugPort.
 
 See $kWikiUrl for detailed usage.''');
 
-    registerSignalHandlers();
+    _registerSignalHandlers();
 
-    _terminal.singleCharMode = true;
+    // _terminal.singleCharMode = true;
+    // _subscription = _terminal.keystrokes.listen((String command) async {
+    //   command = command.trim();
 
-    _subscription = _terminal.keystrokes.listen((String command) async {
-      command = command.trim();
-
-      switch (command) {
-        case 'a':
-          print('a');
-          break;
-        case 'r':
-          _terminal.singleCharMode = false;
-          // await Process.run(
-          //   gdb.path,
-          //   <String>[
-          //     program.path,
-          //     '-ex',
-          //     'set auto-solib-add off',
-          //     '-ex',
-          //     'target remote :$debugPort',
-          //     '-ex',
-          //     'shared /opt/usr/globalapps',
-          //   ],
-          //   runInShell: true,
-          // );
-          // await _subscription.cancel();
-          await go(<String>[
-            gdb.path,
-            program.path,
-            '-ex',
-            'set auto-solib-add off',
-            '-ex',
-            'target remote :$debugPort',
-            '-ex',
-            'shared /opt/usr/globalapps',
-          ]);
-          break;
-        case 'q':
-        case 'Q':
-          stop();
-          break;
-      }
-    });
+    //   switch (command) {
+    //     case 'r':
+    await go(<String>[
+      gdb.path,
+      program.path,
+      '-ex',
+      'set auto-solib-add off',
+      '-ex',
+      'target remote :$debugPort',
+      '-ex',
+      'shared /opt/usr/globalapps',
+    ]);
+    //       break;
+    //     case 'q':
+    //     case 'Q':
+    //       stop();
+    //       break;
+    //   }
+    // });
 
     final int exitCode = await _finished.future;
     if (exitCode != 0) {
@@ -267,15 +248,34 @@ See $kWikiUrl for detailed usage.''');
   }
 
   Future<void> go(List<String> command) async {
-    await _subscription.cancel();
+    await _subscription?.cancel();
     final Process process = await _processManager.start(command);
     // _subscription = _terminal.keystrokes.listen((String stroke) async {
     //   process.stdin.write(stroke);
     // });
 
-    final Stdin stdin = globals.stdio.stdin as Stdin;
-    stdin.echoMode = true;
-    stdin.lineMode = false;
+    // final Stdin stdin = globals.stdio.stdin as Stdin;
+    // stdin.echoMode = false;
+    // stdin.lineMode = false;
+
+    // _terminal.singleCharMode = false;
+    // _terminal.keystrokes.listen((String command) async {
+    //   process.stdin.write(command);
+    // });
+
+    // android_workflow.dart
+    process.stdin.addStream(globals.stdio.stdin);
+    await Future.wait<void>(<Future<void>>[
+      globals.stdio.addStdoutStream(process.stdout),
+      globals.stdio.addStderrStream(process.stderr),
+    ]);
+
+    // unawaited(_process.stdin.addStream(globals.stdio.stdin));
+    // unawaited(_process.stdout.pipe(globals.stdio.stdout));
+    // process.stdout.listen((event) {
+    //   print('write: ' + (const Utf8Decoder()).convert(event));
+    //   globals.stdio.stdout.write(event);
+    // });
 
     // stdin.pipe(streamConsumer)
     // process.stdin.addStream(globals.stdio.stdin);
@@ -283,10 +283,9 @@ See $kWikiUrl for detailed usage.''');
     // _subscription = globals.stdio.stdin.listen((List<int> event) {
     //   process.stdin.write(event);
     // });
-    process.stdout.listen((List<int> event) {
-      // print('out');
-      globals.stdio.stdout.write(event);
-    });
+    // process.stdout.listen((List<int> event) {
+    //   globals.stdio.stdout.write(event);
+    // });
     // stderr
   }
 
@@ -304,7 +303,7 @@ See $kWikiUrl for detailed usage.''');
     globals.printStatus('Interrupted');
   }
 
-  void registerSignalHandlers() {
+  void _registerSignalHandlers() {
     _addSignalHandler(ProcessSignal.sigint, _cleanUp);
     _addSignalHandler(ProcessSignal.sigterm, _cleanUp);
   }
