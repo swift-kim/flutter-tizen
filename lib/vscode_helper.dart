@@ -97,7 +97,7 @@ void updateLaunchJsonWithObservatoryInfo(
 
 void updateLaunchJsonWithRemoteDebuggingInfo(
   FlutterProject project, {
-  required String programPath,
+  required File program,
   required String gdbPath,
   required int debugPort,
 }) {
@@ -105,7 +105,7 @@ void updateLaunchJsonWithRemoteDebuggingInfo(
   if (parentProject != null) {
     updateLaunchJsonWithRemoteDebuggingInfo(
       parentProject,
-      programPath: programPath,
+      program: program,
       gdbPath: gdbPath,
       debugPort: debugPort,
     );
@@ -134,7 +134,8 @@ void updateLaunchJsonWithRemoteDebuggingInfo(
     config['cwd'] = project.hasExampleApp
         ? r'${workspaceFolder}/example'
         : r'${workspaceFolder}';
-    config['program'] = programPath;
+    config['program'] = program.path
+        .replaceFirst(project.directory.path, r'${workspaceFolder}');
     config['miDebuggerPath'] = gdbPath;
     config['miDebuggerServerAddress'] = ':$debugPort';
   }

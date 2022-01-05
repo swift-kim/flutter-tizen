@@ -139,16 +139,13 @@ class ForwardingLogReader extends DeviceLogReader {
   /// Starts receiving messages from the device logger.
   ///
   /// If [retry] is positive and the device logger is not yet ready, the
-  /// connection will be retried [retry] times (null is infinity).
-  Future<void> start({int? retry}) async {
+  /// connection will be retried [retry] times.
+  Future<void> start({int retry = 3}) async {
     if (_socket != null) {
       globals.printTrace('Already connected to the device logger.');
       return;
     }
 
-    // The host port is also used as a device port. This could result in a
-    // binding error if the port is already in use by another process on the
-    // device.
     // The forwarded port will be automatically unforwarded when portForwarder
     // is disposed.
     await _portForwarder.forward(hostPort, hostPort: hostPort);
@@ -156,7 +153,7 @@ class ForwardingLogReader extends DeviceLogReader {
     try {
       while (true) {
         _socket = await _connectAndListen();
-        if (_socket != null || (retry != null && --retry < 0)) {
+        if (_socket != null || --retry < 0) {
           break;
         }
         await Future<void>.delayed(const Duration(seconds: 2));
