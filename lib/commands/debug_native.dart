@@ -17,6 +17,7 @@ import 'package:flutter_tools/src/device.dart';
 import 'package:flutter_tools/src/globals.dart' as globals;
 import 'package:flutter_tools/src/project.dart';
 import 'package:flutter_tools/src/runner/flutter_command.dart';
+import 'package:meta/meta.dart';
 import 'package:process/process.dart';
 
 import '../tizen_device.dart';
@@ -29,9 +30,9 @@ const String kWikiUrl =
 
 class DebugNativeCommand extends FlutterCommand {
   DebugNativeCommand({
-    Platform platform,
-    ProcessManager processManager,
-    TizenSdk tizenSdk,
+    @required Platform platform,
+    @required ProcessManager processManager,
+    @required TizenSdk tizenSdk,
   })  : _platform = platform,
         _processManager = processManager,
         _tizenSdk = tizenSdk {
@@ -42,8 +43,7 @@ class DebugNativeCommand extends FlutterCommand {
   String get name => 'debug-native';
 
   @override
-  String get description =>
-      'Attach native debugger to an application running on a Tizen device.';
+  String get description => 'Attach gdbserver to a running app (Tizen-only).';
 
   @override
   String get category => FlutterCommandCategory.tools;
@@ -78,7 +78,7 @@ class DebugNativeCommand extends FlutterCommand {
     _package = TizenTpk.fromProject(_project);
     if (_package.isDotnet) {
       throwToolExit(
-        'Not supported app language.\n'
+        'Not supported app language.\n\n'
         'See $kWikiUrl for detailed usage.',
       );
     }
