@@ -6,7 +6,7 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'dart:io' as io;
 
 import 'package:file/file.dart';
 import 'package:flutter_tools/src/base/common.dart';
@@ -65,6 +65,7 @@ class DebugNativeCommand extends FlutterCommand {
   FlutterProject _project;
   TizenTpk _package;
   StreamSubscription<void> _subscription;
+  Process _process;
 
   @override
   Future<void> validateCommand() async {
@@ -214,15 +215,22 @@ gdbserver is listening for connection on port $debugPort.
 
 See $kWikiUrl for detailed usage.''');
 
-    _registerSignalHandlers();
+    _registerSignalHandlers((ProcessSignal signal) async {
+      _terminal.singleCharMode = false;
+      await _subscription?.cancel();
+      print('Interrupted.');
+    });
+
+    final Completer<int> finished = Completer<int>();
 
     _terminal.singleCharMode = true;
-    _subscription = _terminal.keystrokes.listen((String command) async {
-      command = command.trim();
-
-      switch (command) {
+    _subscription = _terminal.keystrokes.listen((String key) async {
+      switch (key) {
         case 'r':
-          await go(<String>[
+        case 'R':
+          _terminal.singleCharMode = false;
+          await _subscription?.cancel();
+          await _runProcess(<String>[
             gdb.path,
             program.path,
             '-ex',
@@ -235,88 +243,62 @@ See $kWikiUrl for detailed usage.''');
           break;
         case 'q':
         case 'Q':
-          stop();
+          globals.printStatus('Bye!');
+          _unregisterSignalHandlers();
+          _terminal.singleCharMode = false;
+          await _subscription?.cancel();
+          finished.complete(0);
           break;
       }
     });
 
-    final int exitCode = await _finished.future;
+    final int exitCode = await finished.future;
+    print('finished! $exitCode');
     if (exitCode != 0) {
       return FlutterCommandResult.fail();
     }
     return FlutterCommandResult.success();
   }
 
-  Future<void> go(List<String> command) async {
-    await _subscription?.cancel();
+  Future<void> _runProcess(List<String> command) async {
     final Process process =
         await _processManager.start(command, includeParentEnvironment: true);
-    // _subscription = _terminal.keystrokes.listen((String stroke) async {
-    //   process.stdin.write(stroke);
-    // });
 
-    // final Stdin stdin = globals.stdio.stdin as Stdin;
-    // stdin.echoMode = false;
-    // stdin.lineMode = false;
-
-    _terminal.singleCharMode = false;
-
-    // terminal.dart
-    unawaited(process.stdin
-        .addStream(_terminal.keystrokes.transform(const AsciiEncoder())));
+    // Pipe inputs and outputs.
+    unawaited(process.stdin.addStream(
+        _terminal.keystrokes.transform(const AsciiEncoder()))); // terminal.dart
 
     // android_workflow.dart
-    await Future.wait<void>(<Future<void>>[
+    // TODO: remove the use of globals.
+    final Future<List<void>> outputPipe = Future.wait(<Future<void>>[
       globals.stdio.addStdoutStream(process.stdout),
       globals.stdio.addStderrStream(process.stderr),
     ]);
 
-    // unawaited(_process.stdin.addStream(globals.stdio.stdin));
-    // unawaited(_process.stdout.pipe(globals.stdio.stdout));
-    // process.stdout.listen((event) {
-    //   print('write: ' + (const Utf8Decoder()).convert(event));
-    //   globals.stdio.stdout.write(event);
-    // });
+    _unregisterSignalHandlers();
+    _registerSignalHandlers((ProcessSignal signal) async {
+      signal.send(process.pid);
+      // Swallow the signal until the process termination.
+      // await outputPipe;
+    });
 
-    // stdin.pipe(streamConsumer)
-    // process.stdin.addStream(globals.stdio.stdin);
-
-    // _subscription = globals.stdio.stdin.listen((List<int> event) {
-    //   process.stdin.write(event);
-    // });
-    // process.stdout.listen((List<int> event) {
-    //   globals.stdio.stdout.write(event);
-    // });
-    // stderr
+    await outputPipe;
+    print('process exiting');
   }
-
-  final Completer<int> _finished = Completer<int>();
 
   final Map<ProcessSignal, Object> _signalTokens = <ProcessSignal, Object>{};
 
-  void _addSignalHandler(ProcessSignal signal, SignalHandler handler) {
-    _signalTokens[signal] = _signals.addHandler(signal, handler);
+  void _registerSignalHandlers(SignalHandler onSignal) {
+    _signalTokens[ProcessSignal.sigint] =
+        _signals.addHandler(ProcessSignal.sigint, onSignal);
+    _signalTokens[ProcessSignal.sigterm] =
+        _signals.addHandler(ProcessSignal.sigterm, onSignal);
   }
 
-  Future<void> _cleanUp(ProcessSignal signal) async {
-    _terminal.singleCharMode = false;
-    await _subscription?.cancel();
-    globals.printStatus('Interrupted');
-  }
-
-  void _registerSignalHandlers() {
-    _addSignalHandler(ProcessSignal.sigint, _cleanUp);
-    _addSignalHandler(ProcessSignal.sigterm, _cleanUp);
-  }
-
-  void stop() {
-    for (final MapEntry<ProcessSignal, Object> entry in _signalTokens.entries) {
-      _signals.removeHandler(entry.key, entry.value);
+  void _unregisterSignalHandlers() {
+    for (final ProcessSignal signal in _signalTokens.keys) {
+      _signals.removeHandler(signal, _signalTokens[signal]);
     }
     _signalTokens.clear();
-    _subscription?.cancel();
-
-    globals.printStatus('Bye!');
-    _finished.complete(0);
   }
 }

@@ -539,13 +539,8 @@ class TizenDevice extends Device {
   }
 
   Future<bool> installGdbServer() async {
-    final Version? platformVersion = Version.parse(_platformVersion);
-    String gdbServerVersion = '8.3.1';
-    if (platformVersion != null && platformVersion < Version(6, 0, 0)) {
-      gdbServerVersion = '7.8.1';
-    }
-    final String arch = getTizenBuildArch(architecture, platformVersion);
-    final String tarName = 'gdbserver_${gdbServerVersion}_$arch.tar';
+    final String arch = getTizenBuildArch(architecture, Version(5, 5, 0));
+    final String tarName = 'gdbserver_7.8.1_$arch.tar';
     final File tarArchive =
         _tizenSdk.toolsDirectory.childDirectory('on-demand').childFile(tarName);
     if (!tarArchive.existsSync()) {
