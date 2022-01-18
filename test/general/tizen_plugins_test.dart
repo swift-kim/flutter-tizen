@@ -4,6 +4,8 @@
 
 // @dart = 2.8
 
+import 'dart:io';
+
 import 'package:args/command_runner.dart';
 import 'package:file/memory.dart';
 import 'package:file_testing/file_testing.dart';
@@ -90,7 +92,7 @@ class _PluginRegistrant {
   }, overrides: <Type, Generator>{
     FileSystem: () => fileSystem,
     ProcessManager: () => FakeProcessManager.any(),
-  });
+  }, skip: Platform.isWindows);
 
   testUsingContext('Generates native plugin registrants', () async {
     final Directory pluginDir = fileSystem.directory('/some_native_plugin');
@@ -160,7 +162,7 @@ namespace Runner
   }, overrides: <Type, Generator>{
     FileSystem: () => fileSystem,
     ProcessManager: () => FakeProcessManager.any(),
-  });
+  }, skip: Platform.isWindows);
 }
 
 class _DummyFlutterCommand extends FlutterCommand with DartPluginRegistry {
