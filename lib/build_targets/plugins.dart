@@ -150,8 +150,7 @@ class NativePlugins extends Target {
 
       assert(plugin.fileName != null);
       assert(plugin.pluginClass != null);
-      final String libName =
-          getLibNameForFileName(plugin.fileName!.toLowerCase());
+      final String libName = plugin.fileName!.withoutExtension().toLowerCase();
       final File libFile = buildDir.childFile('lib$libName.a');
       if (!libFile.existsSync()) {
         throwToolExit(
@@ -188,7 +187,7 @@ class NativePlugins extends Target {
       for (final Directory directory
           in pluginLibDirs.where((Directory d) => d.existsSync())) {
         for (final File lib in directory.listSync().whereType<File>()) {
-          final bool isSharedLib = lib.basename.endsWith('.so');
+          final bool isSharedLib = lib.basename.contains('.so');
           final bool isStaticLib = lib.basename.endsWith('.a');
           if (isSharedLib || isStaticLib) {
             final String libName = getLibNameForFileName(lib.basename);

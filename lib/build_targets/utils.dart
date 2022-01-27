@@ -23,6 +23,14 @@ extension PathUtils on String {
     }
     return encloseWith + path + encloseWith;
   }
+
+  String removeExtension() {
+    String path = this;
+    if (path.indexOf('.') > 0) {
+      path = path.substring(0, path.indexOf('.'));
+    }
+    return path;
+  }
 }
 
 String getBuildConfig(BuildMode buildMode) {
@@ -41,8 +49,12 @@ String getLibNameForFileName(String name) {
   if (name.startsWith('lib')) {
     name = name.substring(3);
   }
-  if (name.lastIndexOf('.') > 0) {
-    name = name.substring(0, name.lastIndexOf('.'));
+  if (name.endsWith('.a')) {
+    name = name.substring(0, name.length - 2);
+  } else if (name.endsWith('.so')) {
+    name = name.substring(0, name.length - 3);
+  } else if (name.contains('.so.')) {
+    name = name.substring(0, name.indexOf('.so.'));
   }
   return name;
 }

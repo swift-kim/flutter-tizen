@@ -144,7 +144,10 @@ dependencies:
       processManager: processManager,
     );
     pluginDir.childFile('tizen/lib/libstatic.a').createSync(recursive: true);
-    pluginDir.childFile('tizen/lib/libshared.so').createSync(recursive: true);
+    pluginDir.childFile('tizen/lib/libshared1.so').createSync(recursive: true);
+    pluginDir
+        .childFile('tizen/lib/libshared2.so.9.9')
+        .createSync(recursive: true);
 
     await NativePlugins(const TizenBuildInfo(
       BuildInfo.release,
@@ -155,13 +158,14 @@ dependencies:
     final Directory rootDir =
         environment.buildDir.childDirectory('tizen_plugins');
     expect(rootDir.childFile('lib/libstatic.a'), isNot(exists));
-    expect(rootDir.childFile('lib/libshared.so'), exists);
+    expect(rootDir.childFile('lib/libshared1.so'), exists);
+    expect(rootDir.childFile('lib/libshared2.so.9.9'), exists);
 
     final Map<String, String> projectDef =
         parseIniFile(rootDir.childFile('project_def.prop'));
     expect(
       projectDef['USER_LIBS'],
-      contains('some_native_plugin static shared'),
+      contains('libstatic.a libshared1.so libshared2.so.9.9'),
     );
   }, overrides: <Type, Generator>{
     FileSystem: () => fileSystem,
