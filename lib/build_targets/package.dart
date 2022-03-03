@@ -104,9 +104,7 @@ class DotnetTpk extends Package {
         commonDir.childDirectory('icu').childFile('icudtl.dat');
 
     engineBinary.copySync(libDir.childFile(engineBinary.basename).path);
-    // The embedder so name is statically defined in C# code and cannot be
-    // provided at runtime, so the file name must be a constant.
-    embedder.copySync(libDir.childFile('libflutter_tizen.so').path);
+    embedder.copySync(libDir.childFile(embedder.basename).path);
     icuData.copySync(resDir.childFile(icuData.basename).path);
 
     if (buildMode.isPrecompiled) {

@@ -41,46 +41,46 @@ namespace Tizen.Flutter.Embedding
             public IntPtr dart_entrypoint_argv;
         }
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern FlutterDesktopEngine FlutterDesktopRunEngine(
             ref FlutterDesktopWindowProperties window_properties,
             ref FlutterDesktopEngineProperties engine_properties);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopShutdownEngine(
             FlutterDesktopEngine engine);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern FlutterDesktopPluginRegistrar FlutterDesktopGetPluginRegistrar(
             FlutterDesktopEngine engine,
             string plugin_name);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern FlutterDesktopMessenger FlutterDesktopEngineGetMessenger(
             FlutterDesktopEngine engine);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern IntPtr FlutterDesktopGetWindow(
             FlutterDesktopPluginRegistrar registrar);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopNotifyAppControl(
             FlutterDesktopEngine engine,
             SafeAppControlHandle handle);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopNotifyLocaleChange(
             FlutterDesktopEngine engine);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopNotifyLowMemoryWarning(
             FlutterDesktopEngine engine);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopNotifyAppIsResumed(
             FlutterDesktopEngine engine);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopNotifyAppIsPaused(
             FlutterDesktopEngine engine);
         #endregion
@@ -111,14 +111,14 @@ namespace Tizen.Flutter.Embedding
             IntPtr message,
             IntPtr user_data);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern bool FlutterDesktopMessengerSend(
             FlutterDesktopMessenger messenger,
             string channel,
             IntPtr message,
             uint message_size);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern bool FlutterDesktopMessengerSendWithReply(
             FlutterDesktopMessenger messenger,
             string channel,
@@ -127,14 +127,14 @@ namespace Tizen.Flutter.Embedding
             FlutterDesktopBinaryReply reply,
             IntPtr user_data);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopMessengerSendResponse(
             FlutterDesktopMessenger messenger,
             IntPtr handle,
             IntPtr data,
             uint data_length);
 
-        [DllImport("flutter_tizen.so")]
+        [DllImport("flutter_tizen_tv.so")]
         public static extern void FlutterDesktopMessengerSetCallback(
             FlutterDesktopMessenger messenger,
             string channel,
