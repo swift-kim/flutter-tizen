@@ -19,7 +19,7 @@ class TizenBuildCommand extends BuildCommand {
   TizenBuildCommand({bool verboseHelp = false})
       : super(verboseHelp: verboseHelp) {
     addSubcommand(BuildTpkCommand(verboseHelp: verboseHelp));
-    addSubcommand(BuildZipCommand(verboseHelp: verboseHelp));
+    addSubcommand(BuildModuleCommand(verboseHelp: verboseHelp));
   }
 }
 
@@ -83,9 +83,9 @@ class BuildTpkCommand extends BuildSubCommand
   }
 }
 
-class BuildZipCommand extends BuildSubCommand
+class BuildModuleCommand extends BuildSubCommand
     with DartPluginRegistry, TizenRequiredArtifacts {
-  BuildZipCommand({required bool verboseHelp})
+  BuildModuleCommand({required bool verboseHelp})
       : super(verboseHelp: verboseHelp) {
     addCommonDesktopBuildOptions(verboseHelp: verboseHelp);
     argParser.addOption(
@@ -105,7 +105,7 @@ class BuildZipCommand extends BuildSubCommand
   }
 
   @override
-  final String name = 'zip';
+  final String name = 'module';
 
   @override
   final String description =
@@ -128,7 +128,7 @@ class BuildZipCommand extends BuildSubCommand
     _validateBuild(tizenBuildInfo);
     displayNullSafetyMode(buildInfo);
 
-    await tizenBuilder?.buildZip(
+    await tizenBuilder?.buildModule(
       project: FlutterProject.current(),
       targetFile: targetFile,
       tizenBuildInfo: tizenBuildInfo,

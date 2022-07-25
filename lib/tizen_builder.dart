@@ -169,7 +169,7 @@ class TizenBuilder {
     }
   }
 
-  Future<void> buildZip({
+  Future<void> buildModule({
     required FlutterProject project,
     required TizenBuildInfo tizenBuildInfo,
     required String targetFile,
@@ -223,7 +223,7 @@ class TizenBuilder {
     final Status status = globals.logger.startProgress(
         'Building a Tizen application in $buildModeName mode...');
     try {
-      final Target target = NativeZip(tizenBuildInfo);
+      final Target target = NativeModule(tizenBuildInfo);
       final BuildResult result =
           await globals.buildSystem.build(target, environment);
       if (!result.success) {

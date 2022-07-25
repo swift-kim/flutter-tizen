@@ -402,11 +402,11 @@ class NativeTpk extends TizenPackage {
   }
 }
 
-class NativeZip extends TizenPackage {
-  NativeZip(super.tizenBuildInfo);
+class NativeModule extends TizenPackage {
+  NativeModule(super.tizenBuildInfo);
 
   @override
-  String get name => 'native_zip';
+  String get name => 'native_module';
 
   @override
   Future<void> build(Environment environment) async {
@@ -414,7 +414,7 @@ class NativeZip extends TizenPackage {
         FlutterProject.fromDirectory(environment.projectDir);
     final TizenProject tizenProject = TizenProject.fromFlutter(project);
 
-    final Directory outputDir = environment.outputDir.childDirectory('zip');
+    final Directory outputDir = environment.outputDir.childDirectory('module');
     if (outputDir.existsSync()) {
       outputDir.deleteSync(recursive: true);
     }
