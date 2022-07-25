@@ -466,6 +466,10 @@ class NativeModule extends TizenPackage {
 
     final Directory pluginsDir =
         environment.buildDir.childDirectory('tizen_plugins');
+    final Directory pluginsIncludeDir = pluginsDir.childDirectory('include');
+    if (pluginsIncludeDir.existsSync()) {
+      copyDirectory(pluginsIncludeDir, incDir);
+    }
     final File pluginsLib = pluginsDir.childFile('libflutter_plugins.so');
     if (pluginsLib.existsSync()) {
       pluginsLib.copySync(libDir.childFile(pluginsLib.basename).path);
@@ -475,7 +479,6 @@ class NativeModule extends TizenPackage {
       pluginsUserLibDir.listSync().whereType<File>().forEach(
           (File lib) => lib.copySync(libDir.childFile(lib.basename).path));
     }
-    copyDirectory(pluginsDir.childDirectory('include'), incDir);
 
     // Build the embedding source code.
     final Directory embeddingDir = environment.fileSystem
@@ -489,7 +492,7 @@ class NativeModule extends TizenPackage {
     final TizenManifest tizenManifest =
         TizenManifest.parseFromXml(tizenProject.manifestFile);
     final Rootstrap rootstrap = tizenSdk!.getFlutterRootstrap(
-      profile: tizenManifest.profile,
+      profile: buildInfo.deviceProfile,
       apiVersion: tizenManifest.apiVersion,
       arch: buildInfo.targetArch,
     );
