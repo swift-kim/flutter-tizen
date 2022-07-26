@@ -489,11 +489,15 @@ class NativeModule extends TizenPackage {
     copyDirectory(embeddingDir.childDirectory('include'), incDir);
 
     assert(tizenSdk != null);
-    final TizenManifest tizenManifest =
-        TizenManifest.parseFromXml(tizenProject.manifestFile);
+    String? apiVersion;
+    if (tizenProject.manifestFile.existsSync()) {
+      final TizenManifest tizenManifest =
+          TizenManifest.parseFromXml(tizenProject.manifestFile);
+      apiVersion = tizenManifest.apiVersion;
+    }
     final Rootstrap rootstrap = tizenSdk!.getFlutterRootstrap(
       profile: buildInfo.deviceProfile,
-      apiVersion: tizenManifest.apiVersion,
+      apiVersion: apiVersion ?? '4.0',
       arch: buildInfo.targetArch,
     );
 
