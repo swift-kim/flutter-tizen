@@ -176,6 +176,10 @@ class TizenBuilder {
     required String targetFile,
     String? outputDirectory,
   }) async {
+    final TizenProject tizenProject = TizenProject.fromFlutter(project);
+    if (!tizenProject.existsSync()) {
+      throwToolExit('This project is not configured for Tizen.');
+    }
     if (tizenSdk == null || !tizenSdk!.tizenCli.existsSync()) {
       throwToolExit(
         'Unable to locate Tizen CLI executable.\n'
@@ -219,11 +223,18 @@ class TizenBuilder {
       generateDartPluginRegistry: false,
     );
 
+    if (tizenProject.isDotnet) {
+      throwToolExit(
+        'Building a .NET module is currently not supported.\n'
+        'Delete the project and recreate with the "--tizen-language cpp" option.',
+      );
+    }
+    final Target target = NativeModule(tizenBuildInfo);
+
     final String buildModeName = getNameForBuildMode(buildInfo.mode);
     final Status status = globals.logger.startProgress(
         'Building a Tizen application in $buildModeName mode...');
     try {
-      final Target target = NativeModule(tizenBuildInfo);
       final BuildResult result =
           await globals.buildSystem.build(target, environment);
       if (!result.success) {
