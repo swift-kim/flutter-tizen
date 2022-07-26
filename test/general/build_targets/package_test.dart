@@ -67,7 +67,6 @@ void main() {
       final Environment environment = Environment.test(
         projectDir,
         outputDir: outputDir,
-        defines: <String, String>{kBuildMode: 'release'},
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
@@ -145,7 +144,6 @@ void main() {
       final Environment environment = Environment.test(
         projectDir,
         outputDir: outputDir,
-        defines: <String, String>{kBuildMode: 'debug'},
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
@@ -194,12 +192,6 @@ void main() {
 
   group('Native TPK', () {
     setUp(() {
-      fileSystem.directory('embedding/cpp').childFile('project_def.prop')
-        ..createSync(recursive: true)
-        ..writeAsStringSync('''
-APPNAME = embedding_cpp
-type = staticLib
-''');
       projectDir.childFile('tizen/project_def.prop')
         ..createSync(recursive: true)
         ..writeAsStringSync('''
@@ -213,7 +205,6 @@ type = app
       final Environment environment = Environment.test(
         projectDir,
         outputDir: outputDir,
-        defines: <String, String>{kBuildMode: 'release'},
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
@@ -269,7 +260,6 @@ type = app
       final Environment environment = Environment.test(
         projectDir,
         outputDir: outputDir,
-        defines: <String, String>{kBuildMode: 'debug'},
         fileSystem: fileSystem,
         logger: logger,
         artifacts: artifacts,
