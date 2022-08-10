@@ -2,11 +2,16 @@
 
   <PropertyGroup>
     <OutputType>library</OutputType>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;tizen90</TargetFrameworks>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
+    <Compile Remove="NUIFlutterView.cs"/>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'tizen90'">
+    <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
   </ItemGroup>
 
 </Project>
