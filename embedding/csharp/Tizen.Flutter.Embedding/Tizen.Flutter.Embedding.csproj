@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Tizen.NET.Sdk/1.1.7">
 
   <PropertyGroup>
     <OutputType>library</OutputType>
@@ -7,10 +7,8 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'tizen90'">
-    <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
+    <Compile Remove="NUIFlutterView.cs"/>
+    <None Include="NUIFlutterView.cs"/>
   </ItemGroup>
 
 </Project>

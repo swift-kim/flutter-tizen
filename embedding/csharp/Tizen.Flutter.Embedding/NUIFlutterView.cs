@@ -1,4 +1,3 @@
-#if !NETSTANDARD2_0
 using System;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
@@ -14,4 +13,3 @@ namespace Tizen.Flutter.Embedding
         }
     }
 }
-#endif
