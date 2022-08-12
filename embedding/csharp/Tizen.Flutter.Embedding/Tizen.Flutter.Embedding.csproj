@@ -1,14 +1,22 @@
-﻿<Project Sdk="Tizen.NET.Sdk/1.1.7">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>library</OutputType>
-    <TargetFrameworks>netstandard2.0;tizen90</TargetFrameworks>
+    <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+  <PropertyGroup>
+    <TizenApiLevel Condition="'$(TizenApiLevel)' == ''">4</TizenApiLevel>
+  </PropertyGroup>
+
+  <ItemGroup Condition="$(TizenApiLevel) &lt; 9">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
-    <Compile Remove="NUIFlutterView.cs"/>
-    <None Include="NUIFlutterView.cs"/>
+    <Compile Remove="NUIFlutterView.cs" />
+    <None Include="NUIFlutterView.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$(TizenApiLevel) &gt;= 9">
+    <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
   </ItemGroup>
 
 </Project>
