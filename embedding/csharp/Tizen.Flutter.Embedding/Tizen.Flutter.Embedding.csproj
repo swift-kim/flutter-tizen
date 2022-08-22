@@ -23,7 +23,6 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'tizen40'">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
-    <Compile Remove="NUIFlutterView.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' != 'tizen40'">
