@@ -17,6 +17,10 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Content Include="Tizen.Flutter.Embedding.targets" PackagePath="build" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' == 'tizen40'">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
     <Compile Remove="NUIFlutterView.cs" />
@@ -25,15 +29,5 @@
   <ItemGroup Condition="'$(TargetFramework)' != 'tizen40'">
     <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
   </ItemGroup>
-
-  <PropertyGroup>
-    <BeforePack>_CopyTargetsFileToPackage;$(BeforePack)</BeforePack>
-  </PropertyGroup>
-
-  <Target Name="_CopyTargetsFileToPackage">
-    <ItemGroup>
-      <_PackageFiles Include="Tizen.Flutter.Embedding.targets" PackagePath="build" />
-    </ItemGroup>
-  </Target>
 
 </Project>
