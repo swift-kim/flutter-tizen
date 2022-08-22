@@ -2,18 +2,15 @@
 
   <PropertyGroup>
     <OutputType>library</OutputType>
-    <TargetFramework>netstandard2.0</TargetFramework>
+    <TargetFrameworks>netstandard2.0;tizen40;tizen90</TargetFrameworks>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <TizenApiVersion Condition="'$(TizenApiVersion)' == ''">4.0</TizenApiVersion>
-  </PropertyGroup>
-
-  <ItemGroup Condition="$(TizenApiVersion) &lt; 6.5">
+  <ItemGroup Condition="'$(TargetFramework)' == 'tizen40'">
     <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
+    <Compile Remove="NUIFlutterView.cs" />
   </ItemGroup>
 
-  <ItemGroup Condition="$(TizenApiVersion) &gt;= 6.5">
+  <ItemGroup Condition="'$(TargetFramework)' != 'tizen40'">
     <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
   </ItemGroup>
 
