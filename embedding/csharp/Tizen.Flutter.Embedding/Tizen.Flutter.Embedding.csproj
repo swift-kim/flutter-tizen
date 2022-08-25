@@ -21,11 +21,7 @@
     <Content Include="Tizen.Flutter.Embedding.targets" PackagePath="build" />
   </ItemGroup>
 
-  <ItemGroup Condition="'$(TargetFramework)' == 'tizen40'">
-    <PackageReference Include="Tizen.NET" Version="4.0.1.14164" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' != 'tizen40'">
+  <ItemGroup>
     <PackageReference Include="Tizen.NET" Version="9.0.0.16760" />
   </ItemGroup>
 
