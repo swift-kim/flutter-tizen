@@ -26,6 +26,7 @@ import 'package:process/process.dart';
 import 'forwarding_log_reader.dart';
 import 'tizen_build_info.dart';
 import 'tizen_builder.dart';
+import 'tizen_dlog_reader.dart';
 import 'tizen_sdk.dart';
 import 'tizen_tpk.dart';
 import 'vscode_helper.dart';
@@ -45,6 +46,7 @@ class TizenDevice extends Device {
         _logger = logger,
         _tizenSdk = tizenSdk,
         _fileSystem = fileSystem,
+        _processManager = processManager,
         _processUtils =
             ProcessUtils(logger: logger, processManager: processManager),
         super(
@@ -57,13 +59,16 @@ class TizenDevice extends Device {
   final Logger _logger;
   final TizenSdk _tizenSdk;
   final FileSystem _fileSystem;
+  final ProcessManager _processManager;
   final ProcessUtils _processUtils;
 
   Map<String, String>? _capabilities;
   DeviceLogReader? _logReader;
   DevicePortForwarder? _portForwarder;
 
-  List<String> _sdbCommand(List<String> args) {
+  static bool shouldUseDlogReader = false;
+
+  List<String> sdbCommand(List<String> args) {
     return <String>[_tizenSdk.sdb.path, '-s', id, ...args];
   }
 
@@ -71,7 +76,7 @@ class TizenDevice extends Device {
     List<String> params, {
     bool checked = true,
   }) {
-    return _processUtils.runSync(_sdbCommand(params), throwOnError: checked);
+    return _processUtils.runSync(sdbCommand(params), throwOnError: checked);
   }
 
   /// See: [AndroidDevice.runAdbCheckedAsync] in `android_device.dart`
@@ -79,7 +84,7 @@ class TizenDevice extends Device {
     List<String> params, {
     bool checked = true,
   }) async {
-    return _processUtils.run(_sdbCommand(params), throwOnError: checked);
+    return _processUtils.run(sdbCommand(params), throwOnError: checked);
   }
 
   String getCapability(String name) {
@@ -488,13 +493,14 @@ class TizenDevice extends Device {
   @override
   void clearLogs() {}
 
-  /// Source: [AndroidDevice.getLogReader] in `android_device.dart`
   @override
   FutureOr<DeviceLogReader> getLogReader({
     TizenTpk? app,
     bool includePastLogs = false,
   }) async {
-    return _logReader ??= await ForwardingLogReader.createLogReader(this);
+    return _logReader ??= shouldUseDlogReader
+        ? await TizenDlogReader.createLogReader(this, _processManager)
+        : await ForwardingLogReader.createLogReader(this);
   }
 
   @visibleForTesting
