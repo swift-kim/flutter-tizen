@@ -4,6 +4,8 @@
 
 #include "include/flutter_app.h"
 
+#include <flutter/binary_messenger.h>
+
 #include <cassert>
 
 #include "tizen_log.h"
@@ -42,6 +44,12 @@ bool FlutterApp::OnCreate() {
     TizenLog::Error("Could not launch a Flutter application.");
     return false;
   }
+
+  std::unique_ptr<flutter::BinaryMessenger> messenger =
+      std::make_unique<flutter::BinaryMessengerImpl>(engine_->GetMessenger());
+  app_control_channel_ =
+      std::make_unique<AppControlChannel>(std::move(messenger));
+
   return true;
 }
 
@@ -64,7 +72,7 @@ void FlutterApp::OnTerminate() {
 
 void FlutterApp::OnAppControlReceived(app_control_h app_control) {
   assert(IsRunning());
-  engine_->NotifyAppControl(app_control);
+  app_control_channel_->NotifyAppControl(app_control);
 }
 
 void FlutterApp::OnLowMemory(app_event_info_h event_info) {
@@ -100,45 +108,45 @@ int FlutterApp::Run(int argc, char **argv) {
     auto *app = reinterpret_cast<FlutterApp *>(data);
     app->OnTerminate();
   };
-  lifecycle_cb.app_control = [](app_control_h a, void *data) {
+  lifecycle_cb.app_control = [](app_control_h app_control, void *data) {
     auto *app = reinterpret_cast<FlutterApp *>(data);
-    app->OnAppControlReceived(a);
+    app->OnAppControlReceived(app_control);
   };
 
   app_event_handler_h handler;
   ui_app_add_event_handler(
       &handler, APP_EVENT_LOW_MEMORY,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterApp *>(data);
-        app->OnLowMemory(e);
+        app->OnLowMemory(event);
       },
       this);
   ui_app_add_event_handler(
       &handler, APP_EVENT_LOW_BATTERY,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterApp *>(data);
-        app->OnLowBattery(e);
+        app->OnLowBattery(event);
       },
       this);
   ui_app_add_event_handler(
       &handler, APP_EVENT_LANGUAGE_CHANGED,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterApp *>(data);
-        app->OnLanguageChanged(e);
+        app->OnLanguageChanged(event);
       },
       this);
   ui_app_add_event_handler(
       &handler, APP_EVENT_REGION_FORMAT_CHANGED,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterApp *>(data);
-        app->OnRegionFormatChanged(e);
+        app->OnRegionFormatChanged(event);
       },
       this);
   ui_app_add_event_handler(
       &handler, APP_EVENT_DEVICE_ORIENTATION_CHANGED,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterApp *>(data);
-        app->OnDeviceOrientationChanged(e);
+        app->OnDeviceOrientationChanged(event);
       },
       this);
 

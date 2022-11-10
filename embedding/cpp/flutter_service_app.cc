@@ -21,6 +21,12 @@ bool FlutterServiceApp::OnCreate() {
     TizenLog::Error("Could not run a Flutter engine.");
     return false;
   }
+
+  std::unique_ptr<flutter::BinaryMessenger> messenger =
+      std::make_unique<flutter::BinaryMessengerImpl>(engine_->GetMessenger());
+  app_control_channel_ =
+      std::make_unique<AppControlChannel>(std::move(messenger));
+
   return true;
 }
 
@@ -31,7 +37,7 @@ void FlutterServiceApp::OnTerminate() {
 
 void FlutterServiceApp::OnAppControlReceived(app_control_h app_control) {
   assert(IsRunning());
-  engine_->NotifyAppControl(app_control);
+  app_control_channel_->NotifyAppControl(app_control);
 }
 
 void FlutterServiceApp::OnLowMemory(app_event_info_h event_info) {
@@ -59,38 +65,38 @@ int FlutterServiceApp::Run(int argc, char **argv) {
     auto *app = reinterpret_cast<FlutterServiceApp *>(data);
     app->OnTerminate();
   };
-  lifecycle_cb.app_control = [](app_control_h a, void *data) {
+  lifecycle_cb.app_control = [](app_control_h app_control, void *data) {
     auto *app = reinterpret_cast<FlutterServiceApp *>(data);
-    app->OnAppControlReceived(a);
+    app->OnAppControlReceived(app_control);
   };
 
   app_event_handler_h handler;
   service_app_add_event_handler(
       &handler, APP_EVENT_LOW_MEMORY,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterServiceApp *>(data);
-        app->OnLowMemory(e);
+        app->OnLowMemory(event);
       },
       this);
   service_app_add_event_handler(
       &handler, APP_EVENT_LOW_BATTERY,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterServiceApp *>(data);
-        app->OnLowBattery(e);
+        app->OnLowBattery(event);
       },
       this);
   service_app_add_event_handler(
       &handler, APP_EVENT_LANGUAGE_CHANGED,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterServiceApp *>(data);
-        app->OnLanguageChanged(e);
+        app->OnLanguageChanged(event);
       },
       this);
   service_app_add_event_handler(
       &handler, APP_EVENT_REGION_FORMAT_CHANGED,
-      [](app_event_info_h e, void *data) {
+      [](app_event_info_h event, void *data) {
         auto *app = reinterpret_cast<FlutterServiceApp *>(data);
-        app->OnRegionFormatChanged(e);
+        app->OnRegionFormatChanged(event);
       },
       this);
 

@@ -166,3 +166,10 @@ FlutterDesktopPluginRegistrarRef FlutterEngine::GetRegistrarForPlugin(
   }
   return nullptr;
 }
+
+FlutterDesktopMessengerRef FlutterEngine::GetMessenger() {
+  if (engine_) {
+    return FlutterDesktopEngineGetMessenger(engine_);
+  }
+  return nullptr;
+}

@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "app_control_channel.h"
+
 // The engine for Flutter execution.
 class FlutterEngine : public flutter::PluginRegistry {
  public:
@@ -73,6 +75,8 @@ class FlutterEngine : public flutter::PluginRegistry {
   // |flutter::PluginRegistry|
   FlutterDesktopPluginRegistrarRef GetRegistrarForPlugin(
       const std::string& plugin_name) override;
+
+  FlutterDesktopMessengerRef GetMessenger();
 
  private:
   FlutterEngine(const std::string& assets_path,

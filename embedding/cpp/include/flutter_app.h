@@ -124,6 +124,9 @@ class FlutterApp : public flutter::PluginRegistry {
 
   // The Flutter view instance handle.
   FlutterDesktopViewRef view_ = nullptr;
+
+  //
+  std::unique_ptr<AppControlChannel> app_control_channel_;
 };
 
 #endif /* FLUTTER_TIZEN_EMBEDDING_CPP_INCLUDE_FLUTTER_APP_H_ */

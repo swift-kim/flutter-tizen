@@ -67,6 +67,9 @@ class FlutterServiceApp : public flutter::PluginRegistry {
 
   // The Flutter engine instance.
   std::unique_ptr<FlutterEngine> engine_;
+
+  //
+  std::unique_ptr<AppControlChannel> app_control_channel_;
 };
 
 #endif /* FLUTTER_TIZEN_EMBEDDING_CPP_INCLUDE_FLUTTER_SERVICE_APP_H_ */
