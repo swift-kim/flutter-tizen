@@ -45,10 +45,13 @@ GOTO :EOF
     PUSHD "%flutter_dir%"
       FOR /f %%r IN ('git rev-parse HEAD') DO SET revision=%%r
       IF !version! NEQ !revision! (
-        git reset --hard
         git clean -xdf
-        git fetch "%flutter_repo%" "!version!"
-        git checkout FETCH_HEAD
+        git fetch origin stable:stable
+        git checkout -f stable
+        git reset --hard "!version!" || (
+          ECHO Error: Failed to fetch a revision from the flutter repo. 1>&2
+          EXIT /B 1
+        )
 
         REM Invalidate the cache.
         IF EXIST "%cache_dir%" RMDIR /S /Q "%cache_dir%"

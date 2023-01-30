@@ -47,10 +47,10 @@ function update_flutter() {
   # Update flutter repo if needed.
   local version="$(cat "$ROOT_DIR/bin/internal/flutter.version")"
   if [[ "$version" != "$(git rev-parse HEAD)" ]]; then
-    git reset --hard
     git clean -xdf
-    git fetch "$FLUTTER_REPO" "$version"
-    git checkout FETCH_HEAD
+    git fetch origin stable:stable
+    git checkout -f stable
+    git reset --hard "$version"
 
     # Invalidate the cache.
     rm -fr "$ROOT_DIR/bin/cache"
