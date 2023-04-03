@@ -129,7 +129,8 @@ void main() {
           ephemeralDir.childDirectory('res/flutter_assets');
       final File engineBinary =
           ephemeralDir.childFile('lib/libflutter_engine.so');
-      final File embedder = ephemeralDir.childFile('lib/libflutter_tizen.so');
+      final File embedder =
+          ephemeralDir.childFile('lib/libflutter_tizen_common.so');
       final File icuData = ephemeralDir.childFile('res/icudtl.dat');
       final File aotSnapshot = ephemeralDir.childFile('lib/libapp.so');
       final File pluginsLib =
@@ -332,7 +333,8 @@ type = app
       final Directory flutterAssetsDir =
           outputDir.childDirectory('res/flutter_assets');
       final File engineBinary = outputDir.childFile('lib/libflutter_engine.so');
-      final File embedder = outputDir.childFile('lib/libflutter_tizen.so');
+      final File embedder =
+          outputDir.childFile('lib/libflutter_tizen_common.so');
       final File icuData = outputDir.childFile('res/icudtl.dat');
       final File aotSnapshot = outputDir.childFile('lib/libapp.so');
       final File generatedPluginRegistrant =
